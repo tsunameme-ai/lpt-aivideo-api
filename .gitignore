@@ -1,7 +1,10 @@
 *.js
 !jest.config.js
-*.d.ts
+# *.d.ts
 node_modules
+dist
+.DS_Store
+.env
 
 # CDK asset staging directory
 .cdk.staging
