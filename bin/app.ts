@@ -16,3 +16,9 @@ new ApiStack(app, `VideoServiceAPIStack`, {
     sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!,
     ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!
 })
+
+new ApiStack(app, 'VideoServiceDevAPIStack', {
+    apiName: 'VideoServiceDevAPI',
+    sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!,
+    ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!
+});

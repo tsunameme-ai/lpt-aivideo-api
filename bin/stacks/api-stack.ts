@@ -1,7 +1,8 @@
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as cdk from 'aws-cdk-lib'
 import * as aws_iam from 'aws-cdk-lib/aws-iam'
-import * as logs from 'aws-cdk-lib/aws-logs'
+import * as aws_logs from 'aws-cdk-lib/aws-logs'
+import * as aws_lambda from "aws-cdk-lib/aws-lambda";
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { Construct } from 'constructs'
 import { LambdaStack, LambdaType } from './lambda-stack';
@@ -14,6 +15,7 @@ export interface APIStackProps extends cdk.StackProps {
 
 export class ApiStack extends cdk.Stack {
     public readonly api: apigwv2.HttpApi
+    public readonly img2VidFuncUrl: aws_lambda.FunctionUrl
     constructor(scope: Construct, name: string, props: APIStackProps) {
         super(scope, name, props);
         this.api = new apigwv2.HttpApi(this, props.apiName)
@@ -52,6 +54,13 @@ export class ApiStack extends cdk.Stack {
             methods: [apigwv2.HttpMethod.POST],
             integration: new HttpLambdaIntegration('I2VIntegration', img2vidHandler)
         })
+        this.img2VidFuncUrl = img2vidHandler.addFunctionUrl({
+            authType: aws_lambda.FunctionUrlAuthType.NONE,
+            // cors
+        });
+        new cdk.CfnOutput(this, 'img2VidFuncUrl', {
+            value: this.img2VidFuncUrl.url || 'null'
+        })
 
 
 
@@ -65,7 +74,7 @@ export class ApiStack extends cdk.Stack {
     private enableLog(api: apigwv2.HttpApi) {
 
         const stage = api.defaultStage!.node.defaultChild as apigwv2.CfnStage;
-        const logGroup = new logs.LogGroup(api, 'AccessLogs', {
+        const logGroup = new aws_logs.LogGroup(api, 'AccessLogs', {
             retention: 90, // Keep logs for 90 days
         });
 

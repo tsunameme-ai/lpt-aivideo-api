@@ -16,7 +16,7 @@ export const imageOverVideoHandler = async function (event: APIGatewayProxyEvent
     const imgBase64Str = body.image_data
     const width = body.width
     try {
-        const dest = sdClient.overlayImageOnVideo(videoUrl, imgBase64Str, width)
+        const dest = await sdClient.overlayImageOnVideo(videoUrl, imgBase64Str, width)
         return composeResponse(200, { url: dest })
     }
     catch (e: any) {
