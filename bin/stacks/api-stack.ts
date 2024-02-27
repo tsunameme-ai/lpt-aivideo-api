@@ -11,6 +11,7 @@ export interface APIStackProps extends cdk.StackProps {
     apiName: string
     sdProviderEndpoint: string
     ffmpegLambdaLayerArn: string
+    discordChannel: string
 }
 
 export class ApiStack extends cdk.Stack {
@@ -23,7 +24,7 @@ export class ApiStack extends cdk.Stack {
         const { lambda: iovHandler } = new LambdaStack(this, 'FFMPEGLambdaStack', {
             lambdaName: 'FFMPEGLambda',
             type: LambdaType.FFMPEG,
-            ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!
+            ffmpegLambdaLayerArn: props.ffmpegLambdaLayerArn
         })
         this.api.addRoutes({
             path: '/image-over-video',
@@ -35,7 +36,8 @@ export class ApiStack extends cdk.Stack {
         const { lambda: txt2imgHandler } = new LambdaStack(this, 'Txt2ImgLambdaStack', {
             lambdaName: 'Txt2ImgLambda',
             type: LambdaType.TXT2IMG,
-            sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!
+            sdProviderEndpoint: props.sdProviderEndpoint,
+            discordChannel: props.discordChannel
         })
         this.api.addRoutes({
             path: '/text-to-image',
@@ -46,8 +48,9 @@ export class ApiStack extends cdk.Stack {
         const { lambda: img2vidHandler } = new LambdaStack(this, 'Img2VidLambdaStack', {
             lambdaName: 'Img2VidLambda',
             type: LambdaType.IMG2VID,
-            sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!,
-            ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!
+            ffmpegLambdaLayerArn: props.ffmpegLambdaLayerArn,
+            sdProviderEndpoint: props.sdProviderEndpoint,
+            discordChannel: props.discordChannel
         })
         this.api.addRoutes({
             path: '/image-to-video',

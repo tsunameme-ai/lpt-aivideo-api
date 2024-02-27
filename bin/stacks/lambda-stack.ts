@@ -18,6 +18,7 @@ export interface LambdaStackProps extends cdk.StackProps {
     type: LambdaType,
     sdProviderEndpoint?: string,
     ffmpegLambdaLayerArn?: string
+    discordChannel?: string
 }
 
 export class LambdaStack extends cdk.NestedStack {
@@ -66,6 +67,9 @@ export class LambdaStack extends cdk.NestedStack {
                 if (!props.sdProviderEndpoint) {
                     throw new Error(`sdProviderEndpoint layer is required.`)
                 }
+                if (!props.discordChannel) {
+                    throw new Error(`discordChannel is required.`)
+                }
                 return new aws_lambda_nodejs.NodejsFunction(scope, props.lambdaName, {
                     role: lambdaRole,
                     runtime: aws_lambda.Runtime.NODEJS_20_X,
@@ -74,7 +78,8 @@ export class LambdaStack extends cdk.NestedStack {
                     handler: 'textToImageHandler',
                     entry: path.join(__dirname, '../../lib/lambda/index.ts'),
                     environment: {
-                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint
+                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint,
+                        DISCORD_WEBHOOK: props.discordChannel
                     }
                 })
             }
@@ -93,6 +98,9 @@ export class LambdaStack extends cdk.NestedStack {
                 if (!props.ffmpegLambdaLayerArn) {
                     throw new Error(`ffmpegLambdaLayerArn is required.`)
                 }
+                if (!props.discordChannel) {
+                    throw new Error(`discordChannel is required.`)
+                }
                 return new aws_lambda_nodejs.NodejsFunction(scope, props.lambdaName, {
                     role: lambdaRole,
                     runtime: aws_lambda.Runtime.NODEJS_20_X,
@@ -103,6 +111,7 @@ export class LambdaStack extends cdk.NestedStack {
                     environment: {
                         SDPROVIDER_ENDPOINT: props.sdProviderEndpoint,
                         FFMPEG_PATH: '/opt/bin/ffmpeg',
+                        DISCORD_WEBHOOK: props.discordChannel
                     },
                     layers: [
                         aws_lambda.LayerVersion.fromLayerVersionArn(scope, 'ffmpeg-layer', props.ffmpegLambdaLayerArn),
