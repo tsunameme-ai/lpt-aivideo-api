@@ -22,6 +22,7 @@ type Img2vidInput = {
     height: number,
     motion_bucket_id: number,
     noise_aug_strength: number
+    overlay_base64?: string
 }
 export interface LoggerSDProviderError {
     errInfo: SDProviderErrorInfo
@@ -85,7 +86,21 @@ export class SDClient {
         fd.append('height', params.height.toString())
         fd.append('motion_bucket_id', params.motion_bucket_id.toString())
         fd.append('noise_aug_strength', params.noise_aug_strength.toString())
-        return this.sendRequest('/image-to-video', fd, undefined, 600000)
+        const data = await this.sendRequest('/image-to-video', fd, undefined, 600000) //10min
+        const output0 = data.images[0]
+        let videoUrl = output0.url
+        const overlayImageBase64 = params.overlay_base64
+        if (overlayImageBase64 && overlayImageBase64.length > 0) {
+            try {
+                videoUrl = await this.overlayImageOnVideo(videoUrl, overlayImageBase64, params.width)
+            }
+            catch (e) {
+                this.logger?.error(e)
+            }
+        }
+        return {
+            images: [{ url: videoUrl, seed: output0.seed }]
+        }
     }
     private async sendRequest(path: string, body: any, headers?: { [key: string]: string }, timeoutMs: number = 40000): Promise<GenerationOutput> {
         this.metric?.putMetrics({ keys: [`LPTReq`, `LPTReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
