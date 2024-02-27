@@ -1,6 +1,8 @@
-import { FFMPEGClient } from "../ffmpeg"
-import { S3Client } from "../s3"
 
+import axios from 'axios'
+import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
+import { S3Client } from '../s3'
+import { FFMPEGClient } from '../ffmpeg'
 type GenerationOutput = { images: Array<{ url: string, seed: number | string }> }
 type Txt2imgInput = {
     'model_id': string,
@@ -19,26 +21,59 @@ type Img2vidInput = {
     width: number,
     height: number,
     motion_bucket_id: number,
-    noise_aug_strength: number,
-    'overlay_base64'?: string,
+    noise_aug_strength: number
+}
+export interface LoggerSDProviderError {
+    errInfo: SDProviderErrorInfo
+    err: SDProviderError
+}
+
+export interface SDProviderErrorInfo {
+    path: string
+    status?: number
+    code?: string
+    data?: string
+}
+export class SDProviderError extends Error {
+    info: SDProviderErrorInfo
+
+    constructor(message: string, info: SDProviderErrorInfo) {
+        super(message)
+        this.name = 'SDProviderError'
+        this.info = info
+    }
+
+    public formatForLogger(): LoggerSDProviderError {
+        return { errInfo: this.info, err: this }
+    }
+}
+
+export interface SDClientProps {
+    baseURL: string
+    logger?: ILogger
+    metric?: IMetric
 }
 
 export class SDClient {
-    private endpoint: string
-    constructor(endpoint: string) {
-        this.endpoint = endpoint
+    private baseURL: string
+    private logger?: ILogger
+    private metric?: IMetric
+    constructor(props: SDClientProps) {
+        this.baseURL = props.baseURL
+        this.logger = props.logger
+        this.metric = props.metric
     }
 
     public async txt2img(params: Txt2imgInput): Promise<GenerationOutput> {
-        const url = `${this.endpoint}/text-to-image`
-        return await this.sendRequest(url, {
-            method: 'POST',
-            cache: 'no-cache',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(params)
-        })
+        return await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' }, 30000)
+    }
+
+    private async downloadImageData(url: string) {
+        const res = await fetch(url)
+        if (res.ok) {
+            return res.blob()
+        }
+        throw new Error(`Failed to download image from ${url}`)
     }
 
     public async img2vid(params: Img2vidInput): Promise<GenerationOutput> {
@@ -50,29 +85,54 @@ export class SDClient {
         fd.append('height', params.height.toString())
         fd.append('motion_bucket_id', params.motion_bucket_id.toString())
         fd.append('noise_aug_strength', params.noise_aug_strength.toString())
+        return this.sendRequest('/image-to-video', fd, undefined, 600000)
+    }
+    private async sendRequest(path: string, body: any, headers?: { [key: string]: string }, timeoutMs: number = 40000): Promise<GenerationOutput> {
+        this.metric?.putMetrics({ keys: [`LPTReq`, `LPTReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
+        const t = new Date().getTime()
+        let resOutput = undefined
+        let resError: SDProviderError | undefined = undefined
 
-        const url = `${this.endpoint}/image-to-video`
-        const data = await this.sendRequest(url, {
-            cache: 'no-cache',
-            method: 'POST',
-            body: fd,
-        }, 600000)//10min
-
-        const output0 = data.images[0]
-        let videoUrl = output0.url
-        const overlayImageBase64 = params.overlay_base64
-        if (overlayImageBase64 && overlayImageBase64.length > 0) {
-            try {
-                videoUrl = await this.overlayImageOnVideo(videoUrl, overlayImageBase64, params.width)
+        try {
+            const { status, data } = await axios.post(`${this.baseURL}${path}`, body, {
+                ...headers,
+                timeout: timeoutMs
+            })
+            if (data) {
+                resOutput = data
             }
-            catch (e) {
-
+            else {
+                resError = new SDProviderError('Generation failed.', {
+                    path: path,
+                    status: status,
+                })
             }
+            return data
         }
-        return {
-            images: [{ url: videoUrl, seed: output0.seed }]
+        catch (e: any) {
+            resError = new SDProviderError(e.message, {
+                path: path,
+                status: e.status || e.response?.status || 500,
+                code: e.code,
+                data: JSON.stringify(e.response?.data) || undefined
+            })
+            resError.stack = e.stack
+        }
+        finally {
+            const dur = new Date().getTime() - t
+            if (resError) {
+                this.metric?.putMetrics({ keys: [`LPTError`, `LPTError:${path}:${resError.info.status}`], value: 1, unit: MetricLoggerUnit.Count })
+                this.logger?.error(resError.formatForLogger())
+                throw resError
+            }
+            else {
+                this.metric?.putMetrics({ keys: [`LPT`, `LPT:${path}`], value: 1, unit: MetricLoggerUnit.Count })
+                this.metric?.putMetrics({ keys: ['LPTDuration', `LPTDuration:${path}`], value: dur, unit: MetricLoggerUnit.Milliseconds })
+            }
+            return resOutput!
         }
     }
+
 
     public async overlayImageOnVideo(videoUrl: string, imgBase64Str: string, width: number): Promise<string> {
         const s3BucketSrc = 'lpt-aivideo-src'
@@ -96,68 +156,5 @@ export class SDClient {
             throw new Error(`Failed to download video ${videoUrl}`)
         }
         return await new FFMPEGClient().imageOverVideo(s3Client, s3BucketSrc, s3BucketDst, videoId, width)
-    }
-
-    private async downloadImageData(url: string) {
-        const res = await fetch(url)
-        if (res.ok) {
-            return res.blob()
-        }
-        throw new Error(`Failed to download image from ${url}`)
-    }
-
-    private async sendRequest(url: string, init: RequestInit, timeoutMs: number = 40000): Promise<GenerationOutput> {
-        const t = new Date().getTime()
-        let resError
-        let resOutput
-        let status
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-        try {
-            const res = await fetch(url, { ...init, signal: controller.signal })
-            clearTimeout(timeoutId)
-            status = res.status
-            resOutput = await this.parseResponse(res)
-        }
-        catch (e: any) {
-            console.error(e)
-            resError = e
-            status = e.status || 'ERROR'
-        }
-        finally {
-            clearTimeout(timeoutId)
-            const dur = (new Date().getTime() - t) / 1000
-            const segs = url.split('/')
-            console.log(`LIVEPEER REQ ${status} ${segs[segs.length - 1]} ${dur}`)
-            if (resError) {
-                throw resError
-            }
-            return resOutput!
-        }
-    }
-
-    private async parseResponse(res: Response): Promise<{ images: Array<{ url: string, seed: number | string }> }> {
-        if (res.ok) {
-            const data = await res.json()
-            const images = data.images.map((item: { url: string, seed?: number }) => {
-                return {
-                    url: item.url,
-                    seed: item.seed
-                }
-            })
-            return { images }
-        }
-        let errorMessage = ''
-        try {
-            const data = await res.json()
-            errorMessage = data.error?.message || ''
-        }
-        catch (e) {
-        }
-        finally {
-            throw new Error(`SD Provider Error: ${res.status} ${errorMessage}`)
-        }
     }
 }

@@ -14,11 +14,13 @@ if (!process.env.SDPROVIDER_ENDPOINT) {
 new ApiStack(app, `VideoServiceAPIStack`, {
     apiName: 'VideoServiceAPI',
     sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!,
-    ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!
+    ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!,
+    discordChannel: process.env.DISCORD_WEBHOOK_DEV!
 })
 
 new ApiStack(app, 'VideoServiceDevAPIStack', {
     apiName: 'VideoServiceDevAPI',
     sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!,
-    ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!
+    ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!,
+    discordChannel: process.env.DISCORD_WEBHOOK_DEV!
 });

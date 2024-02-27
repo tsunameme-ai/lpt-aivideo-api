@@ -10,7 +10,10 @@ const composeResponse = (statusCode: number, body: any): APIGatewayProxyResult =
 }
 
 export const imageOverVideoHandler = async function (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-    const sdClient = new SDClient(process.env.SDPROVIDER_ENDPOINT!)
+
+    const sdClient = new SDClient({
+        baseURL: process.env.SDPROVIDER_ENDPOINT!
+    })
     const body = JSON.parse(event.body || '{}')
     const videoUrl = body.video_url
     const imgBase64Str = body.image_data
