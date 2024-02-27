@@ -59,7 +59,7 @@ export class AWSMetricsLogger implements IMetric {
     constructor(stack: StackType) {
         this.awsMetricLogger = createMetricsLogger()
         this.awsMetricLogger.setNamespace(MetricNamespace.VideoService)
-        // this.awsMetricLogger.setDimensions({ Service: SERVICE_NAME })
+        this.awsMetricLogger.setDimensions({ Service: MetricNamespace.VideoService })
         this.stack = stack
     }
 

@@ -32,6 +32,7 @@ export interface SDProviderErrorInfo {
     path: string
     status?: number
     code?: string
+    data?: string
 }
 export class SDProviderError extends Error {
     info: SDProviderErrorInfo
@@ -87,6 +88,7 @@ export class SDClient {
         return this.sendRequest('/image-to-video', fd, undefined, 600000)
     }
     private async sendRequest(path: string, body: any, headers?: { [key: string]: string }, timeoutMs: number = 40000): Promise<GenerationOutput> {
+        this.metric?.putMetrics({ keys: [`LPTReq`, `LPTReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
         const t = new Date().getTime()
         let resOutput = undefined
         let resError: SDProviderError | undefined = undefined
@@ -110,8 +112,9 @@ export class SDClient {
         catch (e: any) {
             resError = new SDProviderError(e.message, {
                 path: path,
-                status: e.status || 500,
-                code: e.code
+                status: e.status || e.response?.status || 500,
+                code: e.code,
+                data: JSON.stringify(e.response?.data) || undefined
             })
             resError.stack = e.stack
         }
@@ -119,7 +122,6 @@ export class SDClient {
             const dur = new Date().getTime() - t
             if (resError) {
                 this.metric?.putMetrics({ keys: [`LPTError`, `LPTError:${path}:${resError.info.status}`], value: 1, unit: MetricLoggerUnit.Count })
-                this.metric?.putMetrics({ keys: [`LPTErrorDuration`, `LPTErrorDuration:${path}:${resError.info.status}`], value: dur, unit: MetricLoggerUnit.Milliseconds })
                 this.logger?.error(resError.formatForLogger())
                 throw resError
             }
