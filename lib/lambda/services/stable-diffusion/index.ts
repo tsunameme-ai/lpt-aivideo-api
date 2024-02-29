@@ -3,6 +3,8 @@ import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
 import { S3Client } from '../s3'
 import { FFMPEGClient } from '../ffmpeg'
+import ShortUniqueId from 'short-unique-id'
+
 type GenerationOutput = { images: Array<{ url: string, seed: number | string }> }
 type Txt2imgInput = {
     'model_id': string,
@@ -74,7 +76,10 @@ export class SDClient {
         if (res.ok) {
             return res.blob()
         }
-        throw new Error(`Failed to download image from ${url}`)
+        throw new SDProviderError(`Image cannot be downloaded ${url}`, {
+            path: url,
+            status: res.status,
+        })
     }
 
     public async img2vid(params: Img2vidInput): Promise<GenerationOutput> {
@@ -152,7 +157,7 @@ export class SDClient {
     public async overlayImageOnVideo(videoUrl: string, imgBase64Str: string, width: number): Promise<string> {
         const s3BucketSrc = 'lpt-aivideo-src'
         const s3BucketDst = 'lpt-aivideo-dst'
-        const videoId = Math.floor(new Date().getTime() / 1000).toString()
+        const videoId = new ShortUniqueId({ length: 10 }).rnd()
         const s3Client = new S3Client()
         const imgData = Buffer.from(imgBase64Str.replace(/^data:image\/\w+;base64,/, ""), 'base64');
         const imgType = imgBase64Str.split(';')[0].split('/')[1];
