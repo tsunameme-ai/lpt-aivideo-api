@@ -54,8 +54,17 @@ export class ApiStack extends cdk.Stack {
             sdProviderEndpoint: props.sdProviderEndpoint,
             discordChannel: props.discordChannel
         })
+
+
+        const { lambda: showcaseHandler } = new LambdaStack(this, 'ShowcaseLambdaStack', {
+            lambdaName: 'ShowcaseLambda',
+            type: LambdaType.SHOWCASE,
+            ddbGenerationsTableName: props.ddbGenerationsTableName,
+            discordChannel: props.discordChannel
+        })
         generationsTable.grantReadWriteData(txt2imgHandler)
         generationsTable.grantReadWriteData(img2vidHandler)
+        generationsTable.grantReadData(showcaseHandler)
 
         this.api.addRoutes({
             path: '/text-to-image',
@@ -68,6 +77,12 @@ export class ApiStack extends cdk.Stack {
             methods: [apigwv2.HttpMethod.POST],
             integration: new HttpLambdaIntegration('I2VIntegration', img2vidHandler)
         })
+        this.api.addRoutes({
+            path: '/v1/generation/{generationId}',
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new HttpLambdaIntegration('ShowcaseIntegration', showcaseHandler)
+        })
+
         this.img2VidFuncUrl = img2vidHandler.addFunctionUrl({
             authType: aws_lambda.FunctionUrlAuthType.NONE,
         });

@@ -2,7 +2,6 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda
 import { GenerationType, SDClient, SDProviderError } from "../services/stable-diffusion";
 import { AWSMetricsLogger, StackType } from "../services/metrics";
 import { default as bunyan, default as Logger } from 'bunyan'
-// import DynamoDB from "aws-sdk/clients/dynamodb";
 import { DynamoDB } from "aws-sdk";
 import { DDBGenerationsClient } from "../services/ddb-generations-table";
 import ShortUniqueId from "short-unique-id";
@@ -24,7 +23,10 @@ export const textToImageHandler = async function (event: APIGatewayProxyEvent, c
         logger,
         metric
     })
-    const ddbClient = new DDBGenerationsClient(process.env.DDB_GENERATIONS_TABLENAME!)
+    const ddbClient = new DDBGenerationsClient({
+        tableName: process.env.DDB_GENERATIONS_TABLENAME!,
+        logger: logger
+    })
     try {
         const timestamp = new Date().getTime()
         const body = JSON.parse(event.body || '{}')

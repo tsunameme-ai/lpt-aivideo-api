@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import { SDClient } from '../services/stable-diffusion'
+import ShortUniqueId from 'short-unique-id'
 
 const composeResponse = (statusCode: number, body: any): APIGatewayProxyResult => {
     return {
@@ -18,8 +19,9 @@ export const imageOverVideoHandler = async function (event: APIGatewayProxyEvent
     const videoUrl = body.video_url
     const imgBase64Str = body.image_data
     const width = body.width
+    const id = new ShortUniqueId({ length: 10 }).rnd()
     try {
-        const dest = await sdClient.overlayImageOnVideo(videoUrl, imgBase64Str, width)
+        const dest = await sdClient.overlayImageOnVideo(id, videoUrl, imgBase64Str, width)
         return composeResponse(200, { url: dest })
     }
     catch (e: any) {
