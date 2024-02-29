@@ -1,8 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
 import { SDClient, SDProviderError } from "../services/stable-diffusion";
 import axios from 'axios'
-import { AWSMetricsLogger, ILogger, IMetric, StackType } from "../services/metrics";
+import { AWSMetricsLogger, ILogger, StackType } from "../services/metrics";
 import { default as bunyan, default as Logger } from 'bunyan'
+import ShortUniqueId from "short-unique-id";
 
 const shareOnDiscord = async (url: string, logger: ILogger) => {
     if (process.env.DISCORD_WEBHOOK) {
@@ -36,7 +37,8 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
     })
     try {
         const body = JSON.parse(event.body || '{}')
-        const result = await sdClient.img2vid(body)
+        const id = new ShortUniqueId({ length: 10 }).rnd()
+        const result = await sdClient.img2vid(id, body)
         await shareOnDiscord(result.images[0].url, logger)
         return {
             statusCode: 200,

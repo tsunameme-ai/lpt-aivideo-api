@@ -5,8 +5,13 @@ import { S3Client } from '../s3'
 import { FFMPEGClient } from '../ffmpeg'
 import ShortUniqueId from 'short-unique-id'
 
-type GenerationOutput = { images: Array<{ url: string, seed: number | string }> }
-type Txt2imgInput = {
+export enum GenerationType {
+    TXT2IMG = 'txt2img',
+    IMG2VID = 'img2vid'
+}
+export type GenerationOutputItem = { url: string, seed: number | string }
+export type GenerationOutput = { id: string, images: Array<GenerationOutputItem> }
+export type Txt2imgInput = {
     'model_id': string,
     'prompt': string,
     'negative_prompt': string,
@@ -17,7 +22,8 @@ type Txt2imgInput = {
     'num_images_per_prompt': number
 }
 
-type Img2vidInput = {
+export type Img2vidInput = {
+    id: string,
     'image_url': string,
     'model_id': string,
     width: number,
@@ -67,8 +73,12 @@ export class SDClient {
         this.metric = props.metric
     }
 
-    public async txt2img(params: Txt2imgInput): Promise<GenerationOutput> {
-        return await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' }, 30000)
+    public async txt2img(id: string, params: Txt2imgInput): Promise<GenerationOutput> {
+        const output = await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' }, 30000)
+        return {
+            ...output,
+            id
+        }
     }
 
     private async downloadImageData(url: string) {
@@ -82,7 +92,7 @@ export class SDClient {
         })
     }
 
-    public async img2vid(params: Img2vidInput): Promise<GenerationOutput> {
+    public async img2vid(id: string, params: Img2vidInput): Promise<GenerationOutput> {
         const imageData = await this.downloadImageData(params.image_url)
         const fd = new FormData()
         fd.append('image', imageData)
@@ -97,13 +107,14 @@ export class SDClient {
         const overlayImageBase64 = params.overlay_base64
         if (overlayImageBase64 && overlayImageBase64.length > 0) {
             try {
-                videoUrl = await this.overlayImageOnVideo(videoUrl, overlayImageBase64, params.width)
+                videoUrl = await this.overlayImageOnVideo(id, videoUrl, overlayImageBase64, params.width)
             }
             catch (e) {
                 this.logger?.error(e)
             }
         }
         return {
+            id: id,
             images: [{ url: videoUrl, seed: output0.seed }]
         }
     }
@@ -127,7 +138,6 @@ export class SDClient {
                     status: status,
                 })
             }
-            return data
         }
         catch (e: any) {
             resError = new SDProviderError(e.message, {
@@ -149,15 +159,14 @@ export class SDClient {
                 this.metric?.putMetrics({ keys: [`LPT`, `LPT:${path}`], value: 1, unit: MetricLoggerUnit.Count })
                 this.metric?.putMetrics({ keys: ['LPTDuration', `LPTDuration:${path}`], value: dur, unit: MetricLoggerUnit.Milliseconds })
             }
-            return resOutput!
+            return resOutput
         }
     }
 
 
-    public async overlayImageOnVideo(videoUrl: string, imgBase64Str: string, width: number): Promise<string> {
+    public async overlayImageOnVideo(videoId: string, videoUrl: string, imgBase64Str: string, width: number): Promise<string> {
         const s3BucketSrc = 'lpt-aivideo-src'
         const s3BucketDst = 'lpt-aivideo-dst'
-        const videoId = new ShortUniqueId({ length: 10 }).rnd()
         const s3Client = new S3Client()
         const imgData = Buffer.from(imgBase64Str.replace(/^data:image\/\w+;base64,/, ""), 'base64');
         const imgType = imgBase64Str.split(';')[0].split('/')[1];
