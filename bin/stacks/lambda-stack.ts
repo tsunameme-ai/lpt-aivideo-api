@@ -144,7 +144,7 @@ export class LambdaStack extends cdk.NestedStack {
                 return this.execBuildLambda({
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,
-                    timeout: cdk.Duration.seconds(29),
+                    timeout: cdk.Duration.seconds(120),
                     handlerName: 'showcaseHandler',
                     env: {
                         DISCORD_WEBHOOK: props.discordChannel!,
