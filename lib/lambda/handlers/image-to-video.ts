@@ -1,9 +1,10 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
-import { SDClient, SDProviderError } from "../services/stable-diffusion";
+import { GenerationType, SDClient } from "../services/sd-client";
 import axios from 'axios'
 import { AWSMetricsLogger, ILogger, StackType } from "../services/metrics";
 import { default as bunyan, default as Logger } from 'bunyan'
 import ShortUniqueId from "short-unique-id";
+import { DDBClient } from "../services/ddb-client";
 
 const shareOnDiscord = async (url: string, logger: ILogger) => {
     if (process.env.DISCORD_WEBHOOK) {
@@ -35,10 +36,27 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
         logger,
         metric
     })
+    const ddbClient = new DDBClient({
+        tableName: process.env.DDB_GENERATIONS_TABLENAME!,
+        logger: logger
+    })
     try {
+        const timestamp = new Date().getTime()
         const body = JSON.parse(event.body || '{}')
         const id = new ShortUniqueId({ length: 10 }).rnd()
         const result = await sdClient.img2vid(id, body)
+        const input = {
+            ...body
+        }
+        delete input.overlay_base64
+        await ddbClient.saveGeneration({
+            id: id,
+            action: GenerationType.IMG2VID,
+            input,
+            outputs: result.images,
+            timestamp: timestamp,
+            duration: new Date().getTime() - timestamp
+        })
         await shareOnDiscord(result.images[0].url, logger)
         return {
             statusCode: 200,
@@ -47,9 +65,7 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
         }
     }
     catch (e: any) {
-        if (!(e instanceof SDProviderError)) {
-            logger.error(e)
-        }
+        logger.error(e)
         return {
             statusCode: e.status || e.info.status || 500,
             headers: { "Content-Type": "application/json" },

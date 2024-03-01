@@ -6,7 +6,7 @@ import * as aws_lambda from "aws-cdk-lib/aws-lambda";
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { Construct } from 'constructs'
 import { LambdaStack, LambdaType } from './lambda-stack';
-import { DDBGenerationsClient } from '../../lib/lambda/services/ddb-generations-table';
+import { DDBClient } from '../../lib/lambda/services/ddb-client';
 
 export interface APIStackProps extends cdk.StackProps {
     apiName: string
@@ -18,6 +18,7 @@ export interface APIStackProps extends cdk.StackProps {
 
 export class ApiStack extends cdk.Stack {
     public readonly api: apigwv2.HttpApi
+    public readonly txt2ImgFuncUrl: aws_lambda.FunctionUrl
     public readonly img2VidFuncUrl: aws_lambda.FunctionUrl
     constructor(scope: Construct, name: string, props: APIStackProps) {
         super(scope, name, props);
@@ -36,7 +37,7 @@ export class ApiStack extends cdk.Stack {
         })
 
         //GENERATION
-        const generationsTable = DDBGenerationsClient.createTable(this, props.ddbGenerationsTableName)
+        const generationsTable = DDBClient.createTable(this, props.ddbGenerationsTableName, 'generations')
 
         const { lambda: txt2imgHandler } = new LambdaStack(this, 'Txt2ImgLambdaStack', {
             lambdaName: 'Txt2ImgLambda',
@@ -83,6 +84,12 @@ export class ApiStack extends cdk.Stack {
             integration: new HttpLambdaIntegration('ShowcaseIntegration', showcaseHandler)
         })
 
+        this.txt2ImgFuncUrl = txt2imgHandler.addFunctionUrl({
+            authType: aws_lambda.FunctionUrlAuthType.NONE,
+        })
+        new cdk.CfnOutput(this, 'txt2ImgFuncUrl', {
+            value: this.txt2ImgFuncUrl.url || 'null'
+        })
         this.img2VidFuncUrl = img2vidHandler.addFunctionUrl({
             authType: aws_lambda.FunctionUrlAuthType.NONE,
         });

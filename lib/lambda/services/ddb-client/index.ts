@@ -2,14 +2,10 @@ import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
 import { DynamoDB } from 'aws-sdk'
-import { GenerationOutputItem, GenerationType, Txt2imgInput } from '../stable-diffusion'
+import { GenerationOutputItem, GenerationType, Img2vidInput, Txt2imgInput } from '../sd-client'
 import { ILogger } from '../metrics'
 
-enum DDB_GENERATIONS_FIELD {
-    ID = 'id',
-    TIMESTAMP = 'timestamp'
-}
-
+type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>;
 export interface LoggerDDBError {
     errInfo: DDBErrorInfo
     err: DDBError
@@ -17,8 +13,8 @@ export interface LoggerDDBError {
 
 export interface DDBErrorInfo {
     status: number,
-    access: 'query' | 'scan',
-    filter: { [key: string]: string }
+    access: 'query' | 'scan' | 'batchwrite',
+    filter?: { [key: string]: string }
 }
 
 export class DDBError extends Error {
@@ -35,16 +31,28 @@ export class DDBError extends Error {
     }
 }
 
-export class DDBGenerationsClient {
-    public static createTable(scope: Construct, tableName: string) {
-        return new cdk.aws_dynamodb.Table(scope, tableName, {
-            tableName: tableName,
-            partitionKey: { name: DDB_GENERATIONS_FIELD.ID, type: AttributeType.STRING },
-            sortKey: { name: DDB_GENERATIONS_FIELD.TIMESTAMP, type: AttributeType.NUMBER },
-            pointInTimeRecovery: true,
-            billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-            removalPolicy: cdk.RemovalPolicy.RETAIN,
-        })
+export class DDBClient {
+    public static createTable(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
+        if (type === 'generations') {
+            return new cdk.aws_dynamodb.Table(scope, tableName, {
+                tableName: tableName,
+                partitionKey: { name: 'id', type: AttributeType.STRING },
+                sortKey: { name: 'timestamp', type: AttributeType.NUMBER },
+                pointInTimeRecovery: true,
+                billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+                removalPolicy: cdk.RemovalPolicy.RETAIN,
+            })
+        }
+        else {
+            return new cdk.aws_dynamodb.Table(scope, tableName, {
+                tableName: tableName,
+                partitionKey: { name: 'id', type: AttributeType.STRING },
+                sortKey: { name: 'timestamp', type: AttributeType.NUMBER },
+                pointInTimeRecovery: true,
+                billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+                removalPolicy: cdk.RemovalPolicy.RETAIN,
+            })
+        }
     }
     private tableName: string
     private logger?: ILogger
@@ -53,18 +61,18 @@ export class DDBGenerationsClient {
         this.tableName = props.tableName
         this.logger = props.logger
     }
-    public async saveGeneration(params: {
+    public async saveGeneration(item: {
         id: string,
         action: GenerationType,
-        input: Txt2imgInput,
+        input: Txt2imgInput | DDBImg2vidInput,
         outputs: Array<GenerationOutputItem>
         timestamp: number,
         duration: number
     }) {
-        const item = params
+        let itemToSave = item
         const putReqs = [{
             PutRequest: {
-                Item: item,
+                Item: itemToSave,
             },
         }]
         const req = {
@@ -73,14 +81,18 @@ export class DDBGenerationsClient {
             },
         }
         try {
-            await this.ddb.batchWrite(req).promise()
+            return await this.ddb.batchWrite(req).promise()
         }
-        catch (e) {
-            console.log(JSON.stringify(item))
-            console.error(e)
+        catch (e: any) {
+            const de = new DDBError(e.message, {
+                status: 500,
+                access: 'batchwrite',
+            })
+            de.stack = e.stack
+            throw de
         }
     }
-    public async readRecord(id: string): Promise<any> {
+    public async readGeneration(id: string): Promise<any> {
         let ddbError = null
         try {
             const result = await this.ddb.query({

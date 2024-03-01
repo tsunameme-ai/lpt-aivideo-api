@@ -3,7 +3,6 @@ import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
 import { S3Client } from '../s3'
 import { FFMPEGClient } from '../ffmpeg'
-import ShortUniqueId from 'short-unique-id'
 
 export enum GenerationType {
     TXT2IMG = 'txt2img',
@@ -31,7 +30,10 @@ export type Img2vidInput = {
     motion_bucket_id: number,
     noise_aug_strength: number
     overlay_base64?: string
+    overlay_text?: string
+    image_generation_id?: string
 }
+
 export interface LoggerSDProviderError {
     errInfo: SDProviderErrorInfo
     err: SDProviderError

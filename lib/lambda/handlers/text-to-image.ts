@@ -1,9 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
-import { GenerationType, SDClient, SDProviderError } from "../services/stable-diffusion";
+import { GenerationType, SDClient, SDProviderError } from "../services/sd-client";
 import { AWSMetricsLogger, StackType } from "../services/metrics";
 import { default as bunyan, default as Logger } from 'bunyan'
-import { DynamoDB } from "aws-sdk";
-import { DDBGenerationsClient } from "../services/ddb-generations-table";
+import { DDBClient } from "../services/ddb-client";
 import ShortUniqueId from "short-unique-id";
 
 
@@ -23,7 +22,7 @@ export const textToImageHandler = async function (event: APIGatewayProxyEvent, c
         logger,
         metric
     })
-    const ddbClient = new DDBGenerationsClient({
+    const ddbClient = new DDBClient({
         tableName: process.env.DDB_GENERATIONS_TABLENAME!,
         logger: logger
     })
@@ -47,9 +46,7 @@ export const textToImageHandler = async function (event: APIGatewayProxyEvent, c
         }
     }
     catch (e: any) {
-        if (!(e instanceof SDProviderError)) {
-            logger.error(e)
-        }
+        logger.error(e)
         return {
             statusCode: e.status || e.info.status || 500,
             headers: { "Content-Type": "application/json" },
