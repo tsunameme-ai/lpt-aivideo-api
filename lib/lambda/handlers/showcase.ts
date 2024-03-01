@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
 import { default as bunyan, default as Logger } from 'bunyan'
-import { DDBGenerationsClient } from "../services/ddb-generations-table";
+import { DDBClient } from "../services/ddb-client";
 
 
 export const showcaseHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
@@ -12,7 +12,7 @@ export const showcaseHandler = async function (event: APIGatewayProxyEvent, cont
     })
     logger.info(event)
 
-    const ddbClient = new DDBGenerationsClient({
+    const ddbClient = new DDBClient({
         tableName: process.env.DDB_GENERATIONS_TABLENAME!,
         logger: logger
     })
@@ -25,8 +25,7 @@ export const showcaseHandler = async function (event: APIGatewayProxyEvent, cont
         }
     }
     try {
-        const segs = id.split(':')
-        const result = await ddbClient.readRecord(segs[0])
+        const result = await ddbClient.readGeneration(id)
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },

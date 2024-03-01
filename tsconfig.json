@@ -7,7 +7,6 @@
       "dom"
     ],
     "declaration": true,
-    "esModuleInterop": true,
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,

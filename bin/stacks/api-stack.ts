@@ -6,7 +6,7 @@ import * as aws_lambda from "aws-cdk-lib/aws-lambda";
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { Construct } from 'constructs'
 import { LambdaStack, LambdaType } from './lambda-stack';
-import { DDBGenerationsClient } from '../../lib/lambda/services/ddb-generations-table';
+import { DDBClient } from '../../lib/lambda/services/ddb-client';
 
 export interface APIStackProps extends cdk.StackProps {
     apiName: string
@@ -36,7 +36,7 @@ export class ApiStack extends cdk.Stack {
         })
 
         //GENERATION
-        const generationsTable = DDBGenerationsClient.createTable(this, props.ddbGenerationsTableName)
+        const generationsTable = DDBClient.createTable(this, props.ddbGenerationsTableName, 'generations')
 
         const { lambda: txt2imgHandler } = new LambdaStack(this, 'Txt2ImgLambdaStack', {
             lambdaName: 'Txt2ImgLambda',

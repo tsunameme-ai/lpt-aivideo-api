@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
-import { SDClient } from '../services/stable-diffusion'
+import { SDClient } from '../services/sd-client'
 import ShortUniqueId from 'short-unique-id'
 
 const composeResponse = (statusCode: number, body: any): APIGatewayProxyResult => {
