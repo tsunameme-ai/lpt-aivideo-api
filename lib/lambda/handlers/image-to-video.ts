@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
-import { GenerationType, SDClient, SDProviderError } from "../services/sd-client";
+import { GenerationType, SDClient } from "../services/sd-client";
 import axios from 'axios'
 import { AWSMetricsLogger, ILogger, StackType } from "../services/metrics";
 import { default as bunyan, default as Logger } from 'bunyan'
@@ -45,10 +45,14 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
         const body = JSON.parse(event.body || '{}')
         const id = new ShortUniqueId({ length: 10 }).rnd()
         const result = await sdClient.img2vid(id, body)
+        const input = {
+            ...body
+        }
+        delete input.overlay_base64
         await ddbClient.saveGeneration({
             id: id,
             action: GenerationType.IMG2VID,
-            input: body,
+            input,
             outputs: result.images,
             timestamp: timestamp,
             duration: new Date().getTime() - timestamp

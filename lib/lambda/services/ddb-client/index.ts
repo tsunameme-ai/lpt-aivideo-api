@@ -5,6 +5,7 @@ import { DynamoDB } from 'aws-sdk'
 import { GenerationOutputItem, GenerationType, Img2vidInput, Txt2imgInput } from '../sd-client'
 import { ILogger } from '../metrics'
 
+type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>;
 export interface LoggerDDBError {
     errInfo: DDBErrorInfo
     err: DDBError
@@ -63,22 +64,12 @@ export class DDBClient {
     public async saveGeneration(item: {
         id: string,
         action: GenerationType,
-        input: Txt2imgInput | Img2vidInput,
+        input: Txt2imgInput | DDBImg2vidInput,
         outputs: Array<GenerationOutputItem>
         timestamp: number,
         duration: number
     }) {
         let itemToSave = item
-        if (item.action === GenerationType.IMG2VID && (item.input as Img2vidInput).overlay_base64) {
-            const input = {
-                ...item.input
-            }
-            delete (input as Img2vidInput).overlay_base64
-            itemToSave = {
-                ...item,
-                input: input,
-            }
-        }
         const putReqs = [{
             PutRequest: {
                 Item: itemToSave,
@@ -134,5 +125,4 @@ export class DDBClient {
             }
         }
     }
-    // private exec
 }

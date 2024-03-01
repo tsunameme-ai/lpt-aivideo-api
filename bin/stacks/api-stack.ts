@@ -18,6 +18,7 @@ export interface APIStackProps extends cdk.StackProps {
 
 export class ApiStack extends cdk.Stack {
     public readonly api: apigwv2.HttpApi
+    public readonly txt2ImgFuncUrl: aws_lambda.FunctionUrl
     public readonly img2VidFuncUrl: aws_lambda.FunctionUrl
     constructor(scope: Construct, name: string, props: APIStackProps) {
         super(scope, name, props);
@@ -83,6 +84,12 @@ export class ApiStack extends cdk.Stack {
             integration: new HttpLambdaIntegration('ShowcaseIntegration', showcaseHandler)
         })
 
+        this.txt2ImgFuncUrl = txt2imgHandler.addFunctionUrl({
+            authType: aws_lambda.FunctionUrlAuthType.NONE,
+        })
+        new cdk.CfnOutput(this, 'txt2ImgFuncUrl', {
+            value: this.txt2ImgFuncUrl.url || 'null'
+        })
         this.img2VidFuncUrl = img2vidHandler.addFunctionUrl({
             authType: aws_lambda.FunctionUrlAuthType.NONE,
         });

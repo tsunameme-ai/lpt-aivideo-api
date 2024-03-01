@@ -33,6 +33,7 @@ export type Img2vidInput = {
     overlay_text?: string
     image_generation_id?: string
 }
+
 export interface LoggerSDProviderError {
     errInfo: SDProviderErrorInfo
     err: SDProviderError
