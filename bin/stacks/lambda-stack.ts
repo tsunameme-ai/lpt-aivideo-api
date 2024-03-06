@@ -10,6 +10,7 @@ import {
 export enum LambdaType {
     FFMPEG = 'FFMPEG',
     TXT2IMG = 'TXT2IMG',
+    IMG2IMG = 'IMG2IMG',
     IMG2VID = 'IMG2VID',
     SHOWCASE = 'SHOWCASE'
 }
@@ -94,8 +95,28 @@ export class LambdaStack extends cdk.NestedStack {
                 return this.execBuildLambda({
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,
-                    timeout: cdk.Duration.seconds(120),
+                    timeout: cdk.Duration.seconds(29),
                     handlerName: 'textToImageHandler',
+                    env: {
+                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,
+                        DISCORD_WEBHOOK: props.discordChannel!,
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!
+                    }
+                })
+            }
+            case LambdaType.IMG2IMG: {
+                const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
+                    assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
+                    managedPolicies: [
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
+                    ],
+                })
+                return this.execBuildLambda({
+                    lambdaName: props.lambdaName,
+                    lambdaRole: lambdaRole,
+                    timeout: cdk.Duration.seconds(120),
+                    handlerName: 'imageToImageHandler',
                     env: {
                         SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,
                         DISCORD_WEBHOOK: props.discordChannel!,

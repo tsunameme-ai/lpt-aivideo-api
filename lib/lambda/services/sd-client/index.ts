@@ -21,12 +21,26 @@ export type Txt2imgInput = {
     'num_images_per_prompt': number
 }
 
+export type Img2imgInput = {
+    'model_id': string,
+    'prompt': string,
+    'negative_prompt': string,
+    'image_url': string,
+    'strength': number
+    'guidance_scale': number,
+    'seed': number,
+    'width': number,
+    'height': number,
+    'num_images_per_prompt': number
+}
+
 export type Img2vidInput = {
     id: string,
     'image_url': string,
     'model_id': string,
     width: number,
     height: number,
+    seed?: number,
     motion_bucket_id: number,
     noise_aug_strength: number
     overlay_base64?: string
@@ -94,15 +108,40 @@ export class SDClient {
         })
     }
 
+    public async img2img(id: string, params: Img2imgInput): Promise<GenerationOutput> {
+        const imageData = await this.downloadImageData(params.image_url)
+        const fd = new FormData()
+        fd.append('image', imageData)
+        fd.append('model_id', params.model_id)
+        fd.append('width', params.width.toString())
+        fd.append('height', params.height.toString())
+        fd.append('prompt', params.prompt)
+        fd.append('negative_prompt', params.negative_prompt)
+        fd.append('guidance_scale', params.guidance_scale.toString())
+        fd.append('num_images_per_prompt', params.num_images_per_prompt.toString())
+        fd.append('strength', params.strength.toString())
+        if (params.seed) {
+            fd.append('seed', params.seed.toString())
+        }
+        const data = await this.sendRequest('/image-to-image', fd, undefined, 600000)
+        return {
+            id: id,
+            images: data.images
+        }
+    }
+
     public async img2vid(id: string, params: Img2vidInput): Promise<GenerationOutput> {
         const imageData = await this.downloadImageData(params.image_url)
         const fd = new FormData()
         fd.append('image', imageData)
-        fd.append('model_id', 'stabilityai/stable-video-diffusion-img2vid-xt')
+        fd.append('model_id', params.model_id)
         fd.append('width', params.width.toString())
         fd.append('height', params.height.toString())
         fd.append('motion_bucket_id', params.motion_bucket_id.toString())
         fd.append('noise_aug_strength', params.noise_aug_strength.toString())
+        if (params.seed) {
+            fd.append('seed', params.seed.toString())
+        }
         const data = await this.sendRequest('/image-to-video', fd, undefined, 600000) //10min
         const output0 = data.images[0]
         let videoUrl = output0.url
