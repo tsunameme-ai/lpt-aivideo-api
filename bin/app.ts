@@ -16,7 +16,7 @@ new ApiStack(app, `VideoServiceAPIStack`, {
     sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!,
     ddbGenerationsTableName: 'generations',
     ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!,
-    discordChannel: process.env.DISCORD_WEBHOOK_DEV!
+    discordChannel: process.env.DISCORD_WEBHOOK_PROD!
 })
 
 new ApiStack(app, 'VideoServiceDevAPIStack', {
