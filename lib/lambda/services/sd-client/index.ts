@@ -6,6 +6,7 @@ import { FFMPEGClient } from '../ffmpeg'
 
 export enum GenerationType {
     TXT2IMG = 'txt2img',
+    IMG2IMG = 'img2img',
     IMG2VID = 'img2vid'
 }
 export type GenerationOutputItem = { url: string, seed: number | string }
@@ -15,7 +16,7 @@ export type Txt2imgInput = {
     'prompt': string,
     'negative_prompt': string,
     'guidance_scale': number,
-    'seed': number,
+    'seed'?: number,
     'width': number,
     'height': number,
     'num_images_per_prompt': number
@@ -28,9 +29,7 @@ export type Img2imgInput = {
     'image_url': string,
     'strength': number
     'guidance_scale': number,
-    'seed': number,
-    'width': number,
-    'height': number,
+    'seed'?: number,
     'num_images_per_prompt': number
 }
 
@@ -59,6 +58,7 @@ export interface SDProviderErrorInfo {
     code?: string
     data?: string
 }
+
 export class SDProviderError extends Error {
     info: SDProviderErrorInfo
 
@@ -90,7 +90,7 @@ export class SDClient {
     }
 
     public async txt2img(id: string, params: Txt2imgInput): Promise<GenerationOutput> {
-        const output = await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' }, 30000)
+        const output = await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' })
         return {
             ...output,
             id
@@ -113,8 +113,6 @@ export class SDClient {
         const fd = new FormData()
         fd.append('image', imageData)
         fd.append('model_id', params.model_id)
-        fd.append('width', params.width.toString())
-        fd.append('height', params.height.toString())
         fd.append('prompt', params.prompt)
         fd.append('negative_prompt', params.negative_prompt)
         fd.append('guidance_scale', params.guidance_scale.toString())
@@ -123,7 +121,7 @@ export class SDClient {
         if (params.seed) {
             fd.append('seed', params.seed.toString())
         }
-        const data = await this.sendRequest('/image-to-image', fd, undefined, 600000)
+        const data = await this.sendRequest('/image-to-image', fd, undefined)
         return {
             id: id,
             images: data.images
@@ -159,7 +157,7 @@ export class SDClient {
             images: [{ url: videoUrl, seed: output0.seed }]
         }
     }
-    private async sendRequest(path: string, body: any, headers?: { [key: string]: string }, timeoutMs: number = 40000): Promise<GenerationOutput> {
+    private async sendRequest(path: string, body: any, headers?: { [key: string]: string }, timeoutMs: number = 30000): Promise<GenerationOutput> {
         this.metric?.putMetrics({ keys: [`LPTReq`, `LPTReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
         const t = new Date().getTime()
         let resOutput = undefined

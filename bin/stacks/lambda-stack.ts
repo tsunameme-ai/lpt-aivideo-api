@@ -115,7 +115,7 @@ export class LambdaStack extends cdk.NestedStack {
                 return this.execBuildLambda({
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,
-                    timeout: cdk.Duration.seconds(120),
+                    timeout: cdk.Duration.seconds(30),
                     handlerName: 'imageToImageHandler',
                     env: {
                         SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,

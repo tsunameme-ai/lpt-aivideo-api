@@ -2,7 +2,7 @@ import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
 import { DynamoDB } from 'aws-sdk'
-import { GenerationOutputItem, GenerationType, Img2vidInput, Txt2imgInput } from '../sd-client'
+import { GenerationOutputItem, GenerationType, Img2imgInput, Img2vidInput, Txt2imgInput } from '../sd-client'
 import { ILogger } from '../metrics'
 
 type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>;
@@ -64,7 +64,7 @@ export class DDBClient {
     public async saveGeneration(item: {
         id: string,
         action: GenerationType,
-        input: Txt2imgInput | DDBImg2vidInput,
+        input: Txt2imgInput | Img2imgInput | DDBImg2vidInput,
         outputs: Array<GenerationOutputItem>
         timestamp: number,
         duration: number

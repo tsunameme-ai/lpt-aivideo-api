@@ -22,23 +22,23 @@ export const imageToImageHandler = async function (event: APIGatewayProxyEvent, 
         logger,
         metric
     })
-    // const ddbClient = new DDBClient({
-    //     tableName: process.env.DDB_GENERATIONS_TABLENAME!,
-    //     logger: logger
-    // })
+    const ddbClient = new DDBClient({
+        tableName: process.env.DDB_GENERATIONS_TABLENAME!,
+        logger: logger
+    })
     try {
-        // const timestamp = new Date().getTime()
+        const timestamp = new Date().getTime()
         const body = JSON.parse(event.body || '{}')
         const id = new ShortUniqueId({ length: 10 }).rnd()
         const result = await sdClient.img2img(id, body)
-        // await ddbClient.saveGeneration({
-        //     id: id,
-        //     action: GenerationType.TXT2IMG,
-        //     input: body,
-        //     outputs: result.images,
-        //     timestamp: timestamp,
-        //     duration: new Date().getTime() - timestamp
-        // })
+        await ddbClient.saveGeneration({
+            id: id,
+            action: GenerationType.IMG2IMG,
+            input: body,
+            outputs: result.images,
+            timestamp: timestamp,
+            duration: new Date().getTime() - timestamp
+        })
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },
