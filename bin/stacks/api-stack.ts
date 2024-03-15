@@ -94,6 +94,11 @@ export class ApiStack extends cdk.Stack {
             integration: new HttpLambdaIntegration('I2VIntegration', img2vidHandler)
         })
         this.api.addRoutes({
+            path: '/v1/generations',
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new HttpLambdaIntegration('ShowcaseIntegration', showcaseHandler)
+        })
+        this.api.addRoutes({
             path: '/v1/generation/{generationId}',
             methods: [apigwv2.HttpMethod.GET],
             integration: new HttpLambdaIntegration('ShowcaseIntegration', showcaseHandler)

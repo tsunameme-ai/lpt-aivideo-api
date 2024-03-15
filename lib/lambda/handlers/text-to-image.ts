@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
-import { GenerationType, SDClient, SDProviderError } from "../services/sd-client";
+import { GenerationType, SDClient } from "../services/sd-client";
 import { AWSMetricsLogger, StackType } from "../services/metrics";
 import { default as bunyan, default as Logger } from 'bunyan'
 import { DDBClient } from "../services/ddb-client";
@@ -31,14 +31,16 @@ export const textToImageHandler = async function (event: APIGatewayProxyEvent, c
         const body = JSON.parse(event.body || '{}')
         const id = new ShortUniqueId({ length: 10 }).rnd()
         const result = await sdClient.txt2img(id, body)
-        await ddbClient.saveGeneration({
-            id: id,
-            action: GenerationType.TXT2IMG,
-            input: body,
-            outputs: result.images,
-            timestamp: timestamp,
-            duration: new Date().getTime() - timestamp
-        })
+        if (body.width > 100 && body.height > 100) {
+            await ddbClient.saveGeneration({
+                id: id,
+                action: GenerationType.TXT2IMG,
+                input: body,
+                outputs: result.images,
+                timestamp: timestamp,
+                duration: new Date().getTime() - timestamp
+            })
+        }
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },
