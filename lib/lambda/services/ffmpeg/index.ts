@@ -6,7 +6,7 @@ export class FFMPEGClient {
     public async imageOverVideo(s3: S3Client, s3BucketSrc: string, s3BucketDst: string, videoId: string, width: number): Promise<string> {
         const videoLocalFile = `/tmp/${videoId}.mp4`
         const imageLocalFile = `/tmp/${videoId}.png`
-        const outputLocalFile = `/tmp/${videoId}-out.mp4`
+        const outputLocalFile = `/tmp/${videoId}-out.gif`
         let destUrl
 
         try {
@@ -16,7 +16,7 @@ export class FFMPEGClient {
             ])
 
             await this.execImageOverVideo(videoLocalFile, imageLocalFile, width, outputLocalFile)
-            destUrl = await s3.localToS3(s3BucketDst, `${videoId}.mp4`, outputLocalFile)
+            destUrl = await s3.localToS3(s3BucketDst, `${videoId}.gif`, outputLocalFile)
         }
         catch (e: any) {
             console.error(e)
@@ -35,7 +35,7 @@ export class FFMPEGClient {
             ffmpeg(videoFilePath)
                 .input(imageFilePath)
                 .complexFilter([
-                    `[0:v]scale=${width}:-1[bg];[bg][1:v]overlay=0:0`
+                    `[0:v]fps=6,scale=${width}:-1[bg];[bg][1:v]overlay=0:0`
                 ])
                 // .on('progress', function (progress: { percent?: number }) {
                 //     if (progress.percent) {
