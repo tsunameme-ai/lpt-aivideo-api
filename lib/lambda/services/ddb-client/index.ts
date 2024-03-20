@@ -2,8 +2,8 @@ import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
 import { DynamoDB } from 'aws-sdk'
-import { GenerationOutputItem, GenerationType, Img2imgInput, Img2vidInput, Txt2imgInput } from '../sd-client'
 import { ILogger } from '../metrics'
+import { GenerationOutputItem, GenerationType, Img2imgInput, Img2vidInput, Txt2imgInput } from '../sd-client/types'
 
 type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>;
 export interface LoggerDDBError {

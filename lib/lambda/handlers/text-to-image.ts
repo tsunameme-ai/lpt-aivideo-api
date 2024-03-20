@@ -1,9 +1,10 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
-import { GenerationType, SDClient } from "../services/sd-client";
+import { SDClient } from "../services/sd-client";
 import { AWSMetricsLogger, StackType } from "../services/metrics";
 import { default as bunyan, default as Logger } from 'bunyan'
 import { DDBClient } from "../services/ddb-client";
 import ShortUniqueId from "short-unique-id";
+import { GenerationType } from "../services/sd-client/types";
 
 
 export const textToImageHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {

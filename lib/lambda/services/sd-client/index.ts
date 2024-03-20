@@ -3,56 +3,15 @@ import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
 import { S3Client } from '../s3'
 import { FFMPEGClient } from '../ffmpeg'
+import { GenerationOutput, Img2imgInput, Img2vidInput, Txt2imgInput, VideoExtension } from './types'
 
-export enum GenerationType {
-    TXT2IMG = 'txt2img',
-    IMG2IMG = 'img2img',
-    IMG2VID = 'img2vid'
-}
-export type GenerationOutputItem = { url: string, seed: number | string }
-export type GenerationOutput = { id: string, images: Array<GenerationOutputItem> }
-export type Txt2imgInput = {
-    'model_id': string,
-    'prompt': string,
-    'negative_prompt': string,
-    'guidance_scale': number,
-    'seed'?: number,
-    'width': number,
-    'height': number,
-    'num_images_per_prompt': number
-}
 
-export type Img2imgInput = {
-    'model_id': string,
-    'prompt': string,
-    'negative_prompt': string,
-    'image_url': string,
-    'strength': number
-    'guidance_scale': number,
-    'seed'?: number,
-    'num_images_per_prompt': number
-}
-
-export type Img2vidInput = {
-    id: string,
-    'image_url': string,
-    'model_id': string,
-    width: number,
-    height: number,
-    seed?: number,
-    motion_bucket_id: number,
-    noise_aug_strength: number
-    overlay_base64?: string
-    overlay_text?: string
-    image_generation_id?: string
-}
-
-export interface LoggerSDProviderError {
+interface LoggerSDProviderError {
     errInfo: SDProviderErrorInfo
     err: SDProviderError
 }
 
-export interface SDProviderErrorInfo {
+interface SDProviderErrorInfo {
     path: string
     status?: number
     code?: string
@@ -73,7 +32,7 @@ export class SDProviderError extends Error {
     }
 }
 
-export interface SDClientProps {
+interface SDClientProps {
     baseURL: string
     logger?: ILogger
     metric?: IMetric
@@ -146,7 +105,7 @@ export class SDClient {
         const overlayImageBase64 = params.overlay_base64
         if (overlayImageBase64 && overlayImageBase64.length > 0) {
             try {
-                videoUrl = await this.overlayImageOnVideo(id, videoUrl, overlayImageBase64, params.width)
+                videoUrl = await this.overlayImageOnVideo(id, videoUrl, overlayImageBase64, params.width, params.output_type || 'gif')
             }
             catch (e) {
                 this.logger?.error(e)
@@ -203,7 +162,7 @@ export class SDClient {
     }
 
 
-    public async overlayImageOnVideo(videoId: string, videoUrl: string, imgBase64Str: string, width: number): Promise<string> {
+    public async overlayImageOnVideo(videoId: string, videoUrl: string, imgBase64Str: string, width: number, ext: VideoExtension): Promise<string> {
         const s3BucketSrc = 'lpt-aivideo-src'
         const s3BucketDst = 'lpt-aivideo-dst'
         const s3Client = new S3Client()
@@ -223,6 +182,6 @@ export class SDClient {
             console.error(e)
             throw new Error(`Failed to download video ${videoUrl}`)
         }
-        return await new FFMPEGClient().imageOverVideo(s3Client, s3BucketSrc, s3BucketDst, videoId, width)
+        return await new FFMPEGClient().imageOverVideo(s3Client, s3BucketSrc, s3BucketDst, videoId, width, ext)
     }
 }

@@ -1,12 +1,13 @@
 import ffmpeg from 'fluent-ffmpeg'
 import { S3Client } from '../s3';
 import fs from 'fs'
+import { VideoExtension } from '../sd-client/types';
 
 export class FFMPEGClient {
-    public async imageOverVideo(s3: S3Client, s3BucketSrc: string, s3BucketDst: string, videoId: string, width: number): Promise<string> {
+    public async imageOverVideo(s3: S3Client, s3BucketSrc: string, s3BucketDst: string, videoId: string, width: number, ext: VideoExtension): Promise<string> {
         const videoLocalFile = `/tmp/${videoId}.mp4`
         const imageLocalFile = `/tmp/${videoId}.png`
-        const outputLocalFile = `/tmp/${videoId}-out.gif`
+        const outputLocalFile = `/tmp/${videoId}-out.${ext}`
         let destUrl
 
         try {
@@ -16,7 +17,7 @@ export class FFMPEGClient {
             ])
 
             await this.execImageOverVideo(videoLocalFile, imageLocalFile, width, outputLocalFile)
-            destUrl = await s3.localToS3(s3BucketDst, `${videoId}.gif`, outputLocalFile)
+            destUrl = await s3.localToS3(s3BucketDst, `${videoId}.${ext}`, outputLocalFile)
         }
         catch (e: any) {
             console.error(e)
