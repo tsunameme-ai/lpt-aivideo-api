@@ -36,7 +36,8 @@ export class FFMPEGClient {
             ffmpeg(videoFilePath)
                 .input(imageFilePath)
                 .complexFilter([
-                    `[0:v]fps=6,scale=${width}:-1[bg];[bg][1:v]overlay=0:0`
+                    // `[0:v]fps=6,scale=${width}:-1[bg];[bg][1:v]overlay=0:0`
+                    `[0:v]split [a][b];[a] palettegen [p];[b][p] paletteuse,fps=6,scale=${width}:-1[bg];[bg][1:v]overlay=0:0` //paletteuse + ovlay
                 ])
                 // .on('progress', function (progress: { percent?: number }) {
                 //     if (progress.percent) {
