@@ -1,10 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
-import { GenerationType, SDClient } from "../services/sd-client";
+import { SDClient } from "../services/sd-client";
 import axios from 'axios'
 import { AWSMetricsLogger, ILogger, StackType } from "../services/metrics";
 import { default as bunyan, default as Logger } from 'bunyan'
 import ShortUniqueId from "short-unique-id";
 import { DDBClient } from "../services/ddb-client";
+import { GenerationType } from "../services/sd-client/types";
 
 const shareOnDiscord = async (url: string, logger: ILogger) => {
     if (process.env.DISCORD_WEBHOOK) {

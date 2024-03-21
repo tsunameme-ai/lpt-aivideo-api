@@ -7,11 +7,11 @@ import ShortUniqueId from "short-unique-id";
 import { GenerationType } from "../services/sd-client/types";
 
 
-export const textToImageHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
+export const imageToImageHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
 
     const metric = new AWSMetricsLogger(StackType.LAMBDA)
     const logger: Logger = bunyan.createLogger({
-        name: 'textToImageHandler',
+        name: 'imageToImageHandler',
         serializers: bunyan.stdSerializers,
         level: bunyan.INFO,
         requestId: context.awsRequestId,
@@ -31,17 +31,15 @@ export const textToImageHandler = async function (event: APIGatewayProxyEvent, c
         const timestamp = new Date().getTime()
         const body = JSON.parse(event.body || '{}')
         const id = new ShortUniqueId({ length: 10 }).rnd()
-        const result = await sdClient.txt2img(id, body)
-        if (body.width > 100 && body.height > 100) {
-            await ddbClient.saveGeneration({
-                id: id,
-                action: GenerationType.TXT2IMG,
-                input: body,
-                outputs: result.images,
-                timestamp: timestamp,
-                duration: new Date().getTime() - timestamp
-            })
-        }
+        const result = await sdClient.img2img(id, body)
+        await ddbClient.saveGeneration({
+            id: id,
+            action: GenerationType.IMG2IMG,
+            input: body,
+            outputs: result.images,
+            timestamp: timestamp,
+            duration: new Date().getTime() - timestamp
+        })
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },
