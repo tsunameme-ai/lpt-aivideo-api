@@ -47,13 +47,13 @@ export class ApiStack extends cdk.Stack {
             discordChannel: props.discordChannel
         })
 
-        const { lambda: img2imgHandler } = new LambdaStack(this, 'Img2ImgLambdaStack', {
-            lambdaName: 'Img2ImgLambda',
-            type: LambdaType.IMG2IMG,
-            ddbGenerationsTableName: props.ddbGenerationsTableName,
-            sdProviderEndpoint: props.sdProviderEndpoint,
-            discordChannel: props.discordChannel
-        })
+        // const { lambda: img2imgHandler } = new LambdaStack(this, 'Img2ImgLambdaStack', {
+        //     lambdaName: 'Img2ImgLambda',
+        //     type: LambdaType.IMG2IMG,
+        //     ddbGenerationsTableName: props.ddbGenerationsTableName,
+        //     sdProviderEndpoint: props.sdProviderEndpoint,
+        //     discordChannel: props.discordChannel
+        // })
 
         const { lambda: img2vidHandler } = new LambdaStack(this, 'Img2VidLambdaStack', {
             lambdaName: 'Img2VidLambda',
@@ -72,7 +72,7 @@ export class ApiStack extends cdk.Stack {
             discordChannel: props.discordChannel
         })
         generationsTable.grantReadWriteData(txt2imgHandler)
-        generationsTable.grantReadWriteData(img2imgHandler)
+        // generationsTable.grantReadWriteData(img2imgHandler)
         generationsTable.grantReadWriteData(img2vidHandler)
         generationsTable.grantReadData(showcaseHandler)
 
@@ -82,11 +82,11 @@ export class ApiStack extends cdk.Stack {
             integration: new HttpLambdaIntegration('T2IIntegration', txt2imgHandler)
         })
 
-        this.api.addRoutes({
-            path: '/image-to-image',
-            methods: [apigwv2.HttpMethod.POST],
-            integration: new HttpLambdaIntegration('I2IIntegration', img2imgHandler)
-        })
+        // this.api.addRoutes({
+        //     path: '/image-to-image',
+        //     methods: [apigwv2.HttpMethod.POST],
+        //     integration: new HttpLambdaIntegration('I2IIntegration', img2imgHandler)
+        // })
 
         this.api.addRoutes({
             path: '/image-to-video',

@@ -44,31 +44,3 @@ export type Img2vidInput = {
 }
 
 export type VideoExtension = 'mp4' | 'gif'
-
-
-
-interface LoggerSDProviderError {
-    errInfo: SDProviderErrorInfo
-    err: SDProviderError
-}
-
-interface SDProviderErrorInfo {
-    path: string
-    status?: number
-    code?: string
-    data?: string
-}
-
-export class SDProviderError extends Error {
-    info: SDProviderErrorInfo
-
-    constructor(message: string, info: SDProviderErrorInfo) {
-        super(message)
-        this.name = 'SDProviderError'
-        this.info = info
-    }
-
-    public formatForLogger(): LoggerSDProviderError {
-        return { errInfo: this.info, err: this }
-    }
-}
