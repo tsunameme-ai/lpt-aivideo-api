@@ -22,6 +22,8 @@ export interface LambdaStackProps extends cdk.StackProps {
     sdProviderEndpoint?: string,
     ffmpegLambdaLayerArn?: string
     discordChannel?: string
+    falAiEndpoint?: string
+    falAiApiKey?: string
 }
 
 export class LambdaStack extends cdk.NestedStack {
@@ -100,7 +102,10 @@ export class LambdaStack extends cdk.NestedStack {
                     env: {
                         SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,
                         DISCORD_WEBHOOK: props.discordChannel!,
-                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!,
+                        FALAI_ENDPOINT: props.falAiEndpoint!,
+                        FALAI_APIKEY: props.falAiApiKey!,
+                        LPT_TIMEOUTMS_TXT2IMG: '20000'
                     }
                 })
             }
@@ -120,7 +125,9 @@ export class LambdaStack extends cdk.NestedStack {
                     env: {
                         SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,
                         DISCORD_WEBHOOK: props.discordChannel!,
-                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!,
+                        FALAI_ENDPOINT: props.falAiEndpoint!,
+                        FALAI_APIKEY: props.falAiApiKey!
                     }
                 })
             }
@@ -148,6 +155,8 @@ export class LambdaStack extends cdk.NestedStack {
                         SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,
                         DISCORD_WEBHOOK: props.discordChannel!,
                         DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!,
+                        FALAI_ENDPOINT: props.falAiEndpoint!,
+                        FALAI_APIKEY: props.falAiApiKey!
                     },
                     layers: [
                         aws_lambda.LayerVersion.fromLayerVersionArn(this, 'ffmpeg-layer', props.ffmpegLambdaLayerArn!),
