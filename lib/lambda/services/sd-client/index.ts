@@ -3,37 +3,13 @@ import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
 import { S3Client } from '../s3'
 import { FFMPEGClient } from '../ffmpeg'
-import { GenerationOutput, Img2imgInput, Img2vidInput, Txt2imgInput, VideoExtension } from './types'
+import { GenerationOutput, Img2imgInput, Img2vidInput, SDProviderError, Txt2imgInput, VideoExtension } from './types'
+import { FalAIClient } from './fallback'
 
-
-interface LoggerSDProviderError {
-    errInfo: SDProviderErrorInfo
-    err: SDProviderError
-}
-
-interface SDProviderErrorInfo {
-    path: string
-    status?: number
-    code?: string
-    data?: string
-}
-
-export class SDProviderError extends Error {
-    info: SDProviderErrorInfo
-
-    constructor(message: string, info: SDProviderErrorInfo) {
-        super(message)
-        this.name = 'SDProviderError'
-        this.info = info
-    }
-
-    public formatForLogger(): LoggerSDProviderError {
-        return { errInfo: this.info, err: this }
-    }
-}
 
 interface SDClientProps {
     baseURL: string
+    fallbackClient?: FalAIClient
     logger?: ILogger
     metric?: IMetric
 }
@@ -42,17 +18,32 @@ export class SDClient {
     private baseURL: string
     private logger?: ILogger
     private metric?: IMetric
+    private fallbackClient?: FalAIClient
     constructor(props: SDClientProps) {
         this.baseURL = props.baseURL
         this.logger = props.logger
         this.metric = props.metric
+        this.fallbackClient = props.fallbackClient
     }
 
     public async txt2img(id: string, params: Txt2imgInput): Promise<GenerationOutput> {
-        const output = await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' })
-        return {
-            ...output,
-            id
+        const timeoutMS = parseInt(process.env.LPT_TIMEOUTMS_TXT2IMG || '15000')
+        let resError = undefined
+        try {
+            const output = await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' }, timeoutMS)
+            return {
+                ...output,
+                id
+            }
+        }
+        catch (e) {
+            resError = e
+        }
+        if (this.fallbackClient) {
+            return await this.fallbackClient?.txt2img(id, params, 30000 - timeoutMS)
+        }
+        else {
+            throw resError
         }
     }
 

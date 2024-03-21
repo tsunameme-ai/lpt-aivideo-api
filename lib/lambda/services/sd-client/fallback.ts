@@ -1,7 +1,7 @@
 
 import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
-import { GenerationOutput, SDProviderError, Txt2imgInput } from './types'
+import { GenerationOutput, GenerationOutputItem, SDProviderError, Txt2imgInput } from './types'
 
 interface FalAIClientProps {
     baseURL: string
@@ -43,7 +43,7 @@ export class FalAIClient {
         return width > 512 && height > 512 ? 'square_hd' : 'square'
     }
 
-    public async txt2img(id: string, params: Txt2imgInput): Promise<GenerationOutput> {
+    public async txt2img(id: string, params: Txt2imgInput, timeoutMS: number): Promise<GenerationOutput> {
         const size = this.lookupSize(params.width, params.height)
         const endpoint = this.lookUpModel(params.model_id)
         const output = await this.sendRequest(endpoint, JSON.stringify({
@@ -52,15 +52,16 @@ export class FalAIClient {
             "num_inference_steps": 8,
             "num_images": params.num_images_per_prompt,
             "seed": params.seed
-        }))
+        }), timeoutMS)
         return {
             ...output,
             id
         }
     }
 
+
     private async sendRequest(path: string, body: any, timeoutMs: number = 30000): Promise<GenerationOutput> {
-        this.metric?.putMetrics({ keys: [`LPTReq`, `LPTReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
+        this.metric?.putMetrics({ keys: [`FALAIReq`, `FALAIReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
         const t = new Date().getTime()
         let resOutput = undefined
         let resError: SDProviderError | undefined = undefined
@@ -74,7 +75,13 @@ export class FalAIClient {
                 timeout: timeoutMs
             })
             if (data) {
-                resOutput = data
+                const images: GenerationOutputItem[] = data.images.map((item: { url: string, width: number, height: number, content_type: string }) => {
+                    return {
+                        url: item.url,
+                        seed: data.seed
+                    }
+                })
+                resOutput = { images, id: 'tmp' }
             }
             else {
                 resError = new SDProviderError('Generation failed.', {
@@ -103,7 +110,7 @@ export class FalAIClient {
                 this.metric?.putMetrics({ keys: [`FALAI`, `FALAI:${path}`], value: 1, unit: MetricLoggerUnit.Count })
                 this.metric?.putMetrics({ keys: ['FALAIDuration', `FALAIDuration:${path}`], value: dur, unit: MetricLoggerUnit.Milliseconds })
             }
-            return resOutput
+            return resOutput!
         }
     }
 }

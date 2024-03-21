@@ -5,10 +5,10 @@ import { default as bunyan, default as Logger } from 'bunyan'
 import { DDBClient } from "../services/ddb-client";
 import ShortUniqueId from "short-unique-id";
 import { GenerationType } from "../services/sd-client/types";
+import { FalAIClient } from "../services/sd-client/fallback";
 
 
 export const textToImageHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
-
     const metric = new AWSMetricsLogger(StackType.LAMBDA)
     const logger: Logger = bunyan.createLogger({
         name: 'textToImageHandler',
@@ -21,7 +21,13 @@ export const textToImageHandler = async function (event: APIGatewayProxyEvent, c
     const sdClient = new SDClient({
         baseURL: process.env.SDPROVIDER_ENDPOINT!,
         logger,
-        metric
+        metric,
+        fallbackClient: new FalAIClient({
+            baseURL: process.env.FALAI_ENDPOINT!,
+            apiKey: process.env.FALAI_APIKEY!,
+            logger,
+            metric
+        })
     })
     const ddbClient = new DDBClient({
         tableName: process.env.DDB_GENERATIONS_TABLENAME!,

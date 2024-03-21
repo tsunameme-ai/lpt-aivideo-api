@@ -14,6 +14,8 @@ export interface APIStackProps extends cdk.StackProps {
     ddbGenerationsTableName: string
     ffmpegLambdaLayerArn: string
     discordChannel: string
+    falAiEndpoint: string
+    falAiApiKey: string
 }
 
 export class ApiStack extends cdk.Stack {
@@ -44,7 +46,9 @@ export class ApiStack extends cdk.Stack {
             type: LambdaType.TXT2IMG,
             ddbGenerationsTableName: props.ddbGenerationsTableName,
             sdProviderEndpoint: props.sdProviderEndpoint,
-            discordChannel: props.discordChannel
+            discordChannel: props.discordChannel,
+            falAiEndpoint: props.falAiEndpoint,
+            falAiApiKey: props.falAiApiKey
         })
 
         // const { lambda: img2imgHandler } = new LambdaStack(this, 'Img2ImgLambdaStack', {
@@ -61,7 +65,9 @@ export class ApiStack extends cdk.Stack {
             ddbGenerationsTableName: props.ddbGenerationsTableName,
             ffmpegLambdaLayerArn: props.ffmpegLambdaLayerArn,
             sdProviderEndpoint: props.sdProviderEndpoint,
-            discordChannel: props.discordChannel
+            discordChannel: props.discordChannel,
+            falAiEndpoint: props.falAiEndpoint,
+            falAiApiKey: props.falAiApiKey
         })
 
 
