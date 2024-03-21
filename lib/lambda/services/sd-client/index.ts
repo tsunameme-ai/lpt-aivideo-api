@@ -3,9 +3,36 @@ import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
 import { S3Client } from '../s3'
 import { FFMPEGClient } from '../ffmpeg'
-import { GenerationOutput, Img2imgInput, Img2vidInput, SDProviderError, Txt2imgInput, VideoExtension } from './types'
+import { GenerationOutput, Img2imgInput, Img2vidInput, Txt2imgInput, VideoExtension } from './types'
 
-export interface SDClientProps {
+
+interface LoggerSDProviderError {
+    errInfo: SDProviderErrorInfo
+    err: SDProviderError
+}
+
+interface SDProviderErrorInfo {
+    path: string
+    status?: number
+    code?: string
+    data?: string
+}
+
+export class SDProviderError extends Error {
+    info: SDProviderErrorInfo
+
+    constructor(message: string, info: SDProviderErrorInfo) {
+        super(message)
+        this.name = 'SDProviderError'
+        this.info = info
+    }
+
+    public formatForLogger(): LoggerSDProviderError {
+        return { errInfo: this.info, err: this }
+    }
+}
+
+interface SDClientProps {
     baseURL: string
     logger?: ILogger
     metric?: IMetric
