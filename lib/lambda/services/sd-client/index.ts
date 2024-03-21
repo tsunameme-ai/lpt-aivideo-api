@@ -105,7 +105,7 @@ export class SDClient {
         const overlayImageBase64 = params.overlay_base64
         if (overlayImageBase64 && overlayImageBase64.length > 0) {
             try {
-                videoUrl = await this.overlayImageOnVideo(id, videoUrl, overlayImageBase64, params.width, params.output_type || 'gif')
+                videoUrl = await this.overlayImageOnVideo(id, videoUrl, overlayImageBase64, params.width, params.output_type || 'mp4')
             }
             catch (e) {
                 this.logger?.error(e)
