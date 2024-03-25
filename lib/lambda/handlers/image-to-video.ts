@@ -27,8 +27,7 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
         name: 'imageToVideoHandler',
         serializers: bunyan.stdSerializers,
         level: bunyan.INFO,
-        requestId: context.awsRequestId,
-        // query: event.info.fieldName,
+        requestId: context.awsRequestId
     })
     logger.info(event)
 

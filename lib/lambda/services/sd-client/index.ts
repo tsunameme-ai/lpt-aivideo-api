@@ -96,7 +96,7 @@ export class SDClient {
         const overlayImageBase64 = params.overlay_base64
         if (overlayImageBase64 && overlayImageBase64.length > 0) {
             try {
-                videoUrl = await this.overlayImageOnVideo(id, videoUrl, overlayImageBase64, params.width, params.output_type || 'mp4')
+                videoUrl = await this.overlayImageOnVideo(id, videoUrl, overlayImageBase64, params.width, params.output_type || 'gif')
             }
             catch (e) {
                 this.logger?.error(e)
@@ -173,6 +173,6 @@ export class SDClient {
             console.error(e)
             throw new Error(`Failed to download video ${videoUrl}`)
         }
-        return await new FFMPEGClient().imageOverVideo(s3Client, s3BucketSrc, s3BucketDst, videoId, width, ext)
+        return await new FFMPEGClient(this.logger).imageOverVideo(s3Client, s3BucketSrc, s3BucketDst, videoId, width, ext)
     }
 }
