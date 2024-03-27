@@ -3,7 +3,7 @@ import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
 import { S3Client } from '../s3'
 import { FFMPEGClient } from '../ffmpeg'
-import { GenerationOutput, Img2imgInput, Img2vidInput, SDProviderError, Txt2imgInput } from './types'
+import { GenerationOutput, GenerationOutputItem, Img2imgInput, Img2vidInput, SDProviderError, Txt2imgInput } from './types'
 import { FalAIClient } from './fallback'
 import { VideoExtension, VideoProcessingOperation, VideoProcessingParams } from '../ffmpeg/types'
 
@@ -86,6 +86,7 @@ export class SDClient {
     }
 
     public async img2vid(id: string, params: Img2vidInput): Promise<GenerationOutput> {
+        let resError = undefined
         const imageData = await this.downloadImageData(params.image_url)
         const fd = new FormData()
         fd.append('image', imageData)
@@ -97,13 +98,34 @@ export class SDClient {
         if (params.seed) {
             fd.append('seed', params.seed.toString())
         }
-        const data = await this.sendRequest('/image-to-video', fd, undefined, 600000) //10min
-        const output0 = data.images[0]
-        let vidUrl = await this.processVideo(id, params.width, output0.url, params.output_type || 'gif', params.overlay_base64)
-        return {
-            id: id,
-            images: [{ url: vidUrl, seed: output0.seed }]
+        let output: GenerationOutputItem | undefined = undefined
+        try {
+            const data = await this.sendRequest('/image-to-video', fd, undefined, 300000) //5min
+            output = data.images[0]
         }
+        catch (e) {
+            resError = e
+
+        }
+        if (this.fallbackClient) {
+            const data = await this.fallbackClient?.img2vid(id, params, 300000)
+            if (data.images.length > 0) {
+                output = data.images[0]
+            }
+        }
+        if (output) {
+            output.url = await this.processVideo(id, params.width, output.url, params.output_type || 'gif', params.overlay_base64)
+            return {
+                id: id,
+                images: [output]
+            }
+        }
+        if (!resError) {
+            resError = new SDProviderError('No data', {
+                path: '/image-to-video'
+            })
+        }
+        throw resError
     }
     private async sendRequest(path: string, body: any, headers?: { [key: string]: string }, timeoutMs: number = 30000): Promise<GenerationOutput> {
         this.metric?.putMetrics({ keys: [`LPTReq`, `LPTReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })

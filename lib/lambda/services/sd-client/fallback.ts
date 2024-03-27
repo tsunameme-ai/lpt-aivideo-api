@@ -1,7 +1,7 @@
 
 import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
-import { GenerationOutput, GenerationOutputItem, SDProviderError, Txt2imgInput } from './types'
+import { GenerationOutput, GenerationOutputItem, Img2vidInput, SDProviderError, Txt2imgInput } from './types'
 
 interface FalAIClientProps {
     baseURL: string
@@ -59,6 +59,19 @@ export class FalAIClient {
         }
     }
 
+    public async img2vid(id: string, params: Img2vidInput, timeoutMS: number): Promise<GenerationOutput> {
+        const output = await this.sendRequest('/fast-svd', {
+            image_url: params.image_url,
+            motion_bucket_id: params.motion_bucket_id,
+            cond_aug: params.noise_aug_strength,
+            seed: params.seed
+        }, timeoutMS)
+        return {
+            ...output,
+            id
+        }
+    }
+
 
     private async sendRequest(path: string, body: any, timeoutMs: number = 30000): Promise<GenerationOutput> {
         this.metric?.putMetrics({ keys: [`FALAIReq`, `FALAIReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
@@ -75,16 +88,30 @@ export class FalAIClient {
                 timeout: timeoutMs
             })
             if (data) {
-                const images: GenerationOutputItem[] = data.images.map((item: { url: string, width: number, height: number, content_type: string }) => {
-                    return {
-                        url: item.url,
-                        seed: data.seed
-                    }
-                })
-                resOutput = { images, id: 'tmp' }
+                let images: GenerationOutputItem[] = []
+                if (data.video) {
+                    images = [{ url: data.video.url, seed: data.seed }]
+                }
+                else if (data.images) {
+                    images = data.images.map((item: { url: string, width: number, height: number, content_type: string }) => {
+                        return {
+                            url: item.url,
+                            seed: data.seed
+                        }
+                    })
+                }
+                if (images && images.length > 0) {
+                    resOutput = { images, id: 'tmp' }
+                }
+                else {
+                    resError = new SDProviderError('No assets', {
+                        path: path,
+                        status: status,
+                    })
+                }
             }
             else {
-                resError = new SDProviderError('Generation failed.', {
+                resError = new SDProviderError('No data.', {
                     path: path,
                     status: status,
                 })
