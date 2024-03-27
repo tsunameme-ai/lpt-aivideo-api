@@ -6,6 +6,7 @@ import { default as bunyan, default as Logger } from 'bunyan'
 import ShortUniqueId from "short-unique-id";
 import { DDBClient } from "../services/ddb-client";
 import { GenerationType } from "../services/sd-client/types";
+import { FalAIClient } from "../services/sd-client/fallback";
 
 const shareOnDiscord = async (url: string, logger: ILogger) => {
     if (process.env.DISCORD_WEBHOOK) {
@@ -34,7 +35,13 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
     const sdClient = new SDClient({
         baseURL: process.env.SDPROVIDER_ENDPOINT!,
         logger,
-        metric
+        metric,
+        fallbackClient: new FalAIClient({
+            baseURL: process.env.FALAI_ENDPOINT!,
+            apiKey: process.env.FALAI_APIKEY!,
+            logger,
+            metric
+        })
     })
     const ddbClient = new DDBClient({
         tableName: process.env.DDB_GENERATIONS_TABLENAME!,
