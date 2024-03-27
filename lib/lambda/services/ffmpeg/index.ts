@@ -1,13 +1,58 @@
 import ffmpeg from 'fluent-ffmpeg'
 import { S3Client } from '../s3';
 import fs, { PathLike } from 'fs'
-import { VideoExtension } from '../sd-client/types';
 import { ILogger } from '../metrics';
+import { VideoProcessingParams, VideoProcessingOperation } from './types';
+
 
 export class FFMPEGClient {
     private logger?: ILogger
     constructor(logger?: ILogger) {
         this.logger = logger
+    }
+
+    public async processVideo(params: VideoProcessingParams): Promise<string> {
+        let destUrl
+        let videoLocalFile = `/tmp/${params.videoId}.mp4`
+        const hasOpOI = [params.ops.includes(VideoProcessingOperation.OVERLAY_IMAGE)]
+        const hasOpGif = [params.ops.includes(VideoProcessingOperation.TO_GIF)]
+        const ext = hasOpGif ? 'gif' : 'mp4'
+        const outputLocalFile = `/tmp/${params.videoId}-out.${ext}`
+        try {
+            await params.s3.s3toLocal(params.s3BucketSrc, `${params.videoId}.mp4`, videoLocalFile)
+
+            if (hasOpOI) {
+                const imageLocalFile = `/tmp/${params.videoId}.png`
+                const outputVideoLocalFile = `/tmp/${params.videoId}-out.mp4`
+                await params.s3.s3toLocal(params.s3BucketSrc, `${params.videoId}.png`, imageLocalFile)
+                await this.addImage(videoLocalFile, imageLocalFile, params.width, outputVideoLocalFile)
+                await Promise.all([
+                    this.removeFile(imageLocalFile),
+                    this.removeFile(videoLocalFile)
+                ])
+                videoLocalFile = outputVideoLocalFile
+            }
+            if (hasOpGif) {
+                await this.convertToGif(videoLocalFile, outputLocalFile)
+            }
+
+            destUrl = await params.s3.localToS3(params.s3BucketDst, `${params.videoId}.${ext}`, outputLocalFile)
+            await this.removeFile(outputLocalFile)
+            return destUrl
+        }
+
+        catch (e: any) {
+            this.logger?.error(e)
+            throw e
+        }
+    }
+    private async removeFile(filePath: string) {
+        try {
+            await fs.unlinkSync(filePath)
+        }
+        catch (e) {
+            this.logger?.error(e)
+        }
     }
 
     public async imageOverVideo(s3: S3Client, s3BucketSrc: string, s3BucketDst: string, videoId: string, width: number, ext: VideoExtension): Promise<string> {

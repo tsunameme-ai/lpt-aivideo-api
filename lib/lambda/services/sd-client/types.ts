@@ -1,3 +1,4 @@
+import { VideoExtension } from "../ffmpeg/types"
 
 export enum GenerationType {
     TXT2IMG = 'txt2img',
@@ -43,7 +44,6 @@ export type Img2vidInput = {
     output_type?: VideoExtension
 }
 
-export type VideoExtension = 'mp4' | 'gif'
 
 
 interface LoggerSDProviderError {

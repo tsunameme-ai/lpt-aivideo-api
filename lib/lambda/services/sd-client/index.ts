@@ -3,8 +3,9 @@ import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
 import { S3Client } from '../s3'
 import { FFMPEGClient } from '../ffmpeg'
-import { GenerationOutput, Img2imgInput, Img2vidInput, SDProviderError, Txt2imgInput, VideoExtension } from './types'
+import { GenerationOutput, Img2imgInput, Img2vidInput, SDProviderError, Txt2imgInput } from './types'
 import { FalAIClient } from './fallback'
+import { VideoExtension, VideoProcessingOperation, VideoProcessingParams } from '../ffmpeg/types'
 
 
 interface SDClientProps {
@@ -15,15 +16,21 @@ interface SDClientProps {
 }
 
 export class SDClient {
+    private s3Client: S3Client
+    private ffmpegClient: FFMPEGClient
     private baseURL: string
     private logger?: ILogger
     private metric?: IMetric
     private fallbackClient?: FalAIClient
+    private s3BucketSrc = 'lpt-aivideo-src'
+    private s3BucketDst = 'lpt-aivideo-dst'
     constructor(props: SDClientProps) {
         this.baseURL = props.baseURL
         this.logger = props.logger
         this.metric = props.metric
         this.fallbackClient = props.fallbackClient
+        this.s3Client = new S3Client()
+        this.ffmpegClient = new FFMPEGClient()
     }
 
     public async txt2img(id: string, params: Txt2imgInput): Promise<GenerationOutput> {
@@ -92,19 +99,10 @@ export class SDClient {
         }
         const data = await this.sendRequest('/image-to-video', fd, undefined, 600000) //10min
         const output0 = data.images[0]
-        let videoUrl = output0.url
-        const overlayImageBase64 = params.overlay_base64
-        if (overlayImageBase64 && overlayImageBase64.length > 0) {
-            try {
-                videoUrl = await this.overlayImageOnVideo(id, videoUrl, overlayImageBase64, params.width, params.output_type || 'gif')
-            }
-            catch (e) {
-                this.logger?.error(e)
-            }
-        }
+        let vidUrl = await this.processVideo(id, params.width, output0.url, params.output_type || 'gif', params.overlay_base64)
         return {
             id: id,
-            images: [{ url: videoUrl, seed: output0.seed }]
+            images: [{ url: vidUrl, seed: output0.seed }]
         }
     }
     private async sendRequest(path: string, body: any, headers?: { [key: string]: string }, timeoutMs: number = 30000): Promise<GenerationOutput> {
@@ -152,27 +150,40 @@ export class SDClient {
         }
     }
 
+    private async prepareForVideoProcessing(videoId: string, width: number, videoUrl: string, ext: VideoExtension, imgBase64Str?: string): Promise<VideoProcessingParams> {
+        const ps = [this.s3Client.remoteToS3(this.s3BucketSrc, `${videoId}.mp4`, videoUrl)]
+        const ops: VideoProcessingOperation[] = []
+        if (imgBase64Str && imgBase64Str.length > 0) {
+            ops.push(VideoProcessingOperation.OVERLAY_IMAGE)
+            const imgData = Buffer.from(imgBase64Str.replace(/^data:image\/\w+;base64,/, ""), 'base64');
+            const imgType = imgBase64Str.split(';')[0].split('/')[1];
+            ps.push(this.s3Client.upload({
+                Bucket: this.s3BucketSrc, Key: `${videoId}.png`, Body: imgData,
+                ContentEncoding: 'base64',
+                ContentType: `image/${imgType}`
+            }))
+        }
+        if (ext === 'gif') {
+            ops.push(VideoProcessingOperation.TO_GIF)
+        }
 
-    public async overlayImageOnVideo(videoId: string, videoUrl: string, imgBase64Str: string, width: number, ext: VideoExtension): Promise<string> {
-        const s3BucketSrc = 'lpt-aivideo-src'
-        const s3BucketDst = 'lpt-aivideo-dst'
-        const s3Client = new S3Client()
-        const imgData = Buffer.from(imgBase64Str.replace(/^data:image\/\w+;base64,/, ""), 'base64');
-        const imgType = imgBase64Str.split(';')[0].split('/')[1];
-        try {
-            await Promise.all([
-                s3Client.remoteToS3(s3BucketSrc, `${videoId}.mp4`, videoUrl),
-                s3Client.upload({
-                    Bucket: s3BucketSrc, Key: `${videoId}.png`, Body: imgData,
-                    ContentEncoding: 'base64', // required
-                    ContentType: `image/${imgType}` // required. Notice the back ticks
-                })
-            ])
+        return {
+            s3: this.s3Client,
+            s3BucketDst: this.s3BucketDst,
+            s3BucketSrc: this.s3BucketSrc,
+            videoId: videoId,
+            width: width,
+            ops: ops
         }
-        catch (e) {
-            console.error(e)
-            throw new Error(`Failed to download video ${videoUrl}`)
+
+    }
+
+
+    public async processVideo(id: string, width: number, videoUrl: string, ext: VideoExtension, imgBase64Str?: string): Promise<string> {
+        const vidParmas = await this.prepareForVideoProcessing(id, width, videoUrl, ext, imgBase64Str)
+        if (vidParmas.ops.length > 0) {
+            return await this.ffmpegClient.processVideo(vidParmas)
         }
-        return await new FFMPEGClient(this.logger).imageOverVideo(s3Client, s3BucketSrc, s3BucketDst, videoId, width, ext)
+        return videoUrl
     }
 }
