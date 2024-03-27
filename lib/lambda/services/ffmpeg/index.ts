@@ -14,12 +14,13 @@ export class FFMPEGClient {
     public async processVideo(params: VideoProcessingParams): Promise<string> {
         let destUrl
         let videoLocalFile = `/tmp/${params.videoId}.mp4`
-        const hasOpOI = [params.ops.includes(VideoProcessingOperation.OVERLAY_IMAGE)]
-        const hasOpGif = [params.ops.includes(VideoProcessingOperation.TO_GIF)]
+        const hasOpOI = params.ops.includes(VideoProcessingOperation.OVERLAY_IMAGE)
+        const hasOpGif = params.ops.includes(VideoProcessingOperation.TO_GIF)
         const ext = hasOpGif ? 'gif' : 'mp4'
         const outputLocalFile = `/tmp/${params.videoId}-out.${ext}`
         try {
             await params.s3.s3toLocal(params.s3BucketSrc, `${params.videoId}.mp4`, videoLocalFile)
+            console.log(`ffmpeg processVideo videoLocalFile ${videoLocalFile} hasOpOI:${hasOpOI} hasOpGif:${hasOpGif}`)
 
             if (hasOpOI) {
                 const imageLocalFile = `/tmp/${params.videoId}.png`
@@ -54,39 +55,6 @@ export class FFMPEGClient {
             this.logger?.error(e)
         }
     }
-
-    public async imageOverVideo(s3: S3Client, s3BucketSrc: string, s3BucketDst: string, videoId: string, width: number, ext: VideoExtension): Promise<string> {
-        const videoLocalFile = `/tmp/${videoId}.mp4`
-        const imageLocalFile = `/tmp/${videoId}.png`
-        const outputVideoLocalFile = `/tmp/${videoId}-out.mp4`
-        const outputLocalFile = ext === 'gif' ? `/tmp/${videoId}-out.gif` : outputVideoLocalFile
-        let destUrl
-
-        try {
-            await Promise.all([
-                s3.s3toLocal(s3BucketSrc, `${videoId}.mp4`, videoLocalFile),
-                s3.s3toLocal(s3BucketSrc, `${videoId}.png`, imageLocalFile)
-            ])
-
-            await this.execImageOverVideo(videoLocalFile, imageLocalFile, width, outputVideoLocalFile, ext === 'gif' ? outputLocalFile : undefined)
-            destUrl = await s3.localToS3(s3BucketDst, `${videoId}.${ext}`, outputLocalFile)
-        }
-        catch (e: any) {
-            this.logger?.error(e)
-            throw e
-        }
-        finally {
-            const fileSet = new Set<PathLike>()
-            fileSet.add(videoLocalFile)
-            fileSet.add(imageLocalFile)
-            fileSet.add(outputVideoLocalFile)
-            fileSet.add(outputLocalFile)
-            await Promise.all(Array.from(fileSet).map(f => {
-                return fs.unlinkSync(f)
-            }))
-        }
-        return destUrl
-    };
     private async addImage(videoFilePath: string, imageFilePath: string, width: number, outputFilePath: string): Promise<string> {
         this.logger?.info({ message: 'addImage', videoFilePath, imageFilePath, width, outputFilePath })
         return new Promise((resolve, reject) => {

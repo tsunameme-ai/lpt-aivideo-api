@@ -30,7 +30,7 @@ export class SDClient {
         this.metric = props.metric
         this.fallbackClient = props.fallbackClient
         this.s3Client = new S3Client()
-        this.ffmpegClient = new FFMPEGClient()
+        this.ffmpegClient = new FFMPEGClient(this.logger)
     }
 
     public async txt2img(id: string, params: Txt2imgInput): Promise<GenerationOutput> {
@@ -151,6 +151,7 @@ export class SDClient {
     }
 
     private async prepareForVideoProcessing(videoId: string, width: number, videoUrl: string, ext: VideoExtension, imgBase64Str?: string): Promise<VideoProcessingParams> {
+        this.logger?.info(`prepareForVideoProcessing ${videoId} ${width} ${videoUrl} ${ext}`)
         const ps = [this.s3Client.remoteToS3(this.s3BucketSrc, `${videoId}.mp4`, videoUrl)]
         const ops: VideoProcessingOperation[] = []
         if (imgBase64Str && imgBase64Str.length > 0) {
@@ -163,6 +164,7 @@ export class SDClient {
                 ContentType: `image/${imgType}`
             }))
         }
+        await Promise.all(ps)
         if (ext === 'gif') {
             ops.push(VideoProcessingOperation.TO_GIF)
         }

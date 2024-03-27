@@ -31,10 +31,11 @@ export const imageOverVideoHandler = async function (event: APIGatewayProxyEvent
     const id = new ShortUniqueId({ length: 10 }).rnd()
     try {
 
-        const dest = await sdClient.processVideo(id, videoUrl, imgBase64Str, width, body.output_type ?? 'gif')
+        const dest = await sdClient.processVideo(id, width, videoUrl, body.output_type ?? 'gif', imgBase64Str)
         return composeResponse(200, { url: dest })
     }
     catch (e: any) {
+        logger.error(e)
         return composeResponse(500, { error: e.message || 'Failed to overly image on video' })
     }
 }

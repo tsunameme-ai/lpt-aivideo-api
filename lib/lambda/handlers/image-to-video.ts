@@ -65,7 +65,6 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
         }
     }
     catch (e: any) {
-        logger.error(e)
         return {
             statusCode: e.status || e.info.status || 500,
             headers: { "Content-Type": "application/json" },
