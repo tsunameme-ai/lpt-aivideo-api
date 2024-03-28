@@ -64,6 +64,7 @@ export class FalAIClient {
             image_url: params.image_url,
             motion_bucket_id: params.motion_bucket_id,
             cond_aug: params.noise_aug_strength,
+            fps: 6,
             seed: params.seed
         }, timeoutMS)
         return {
