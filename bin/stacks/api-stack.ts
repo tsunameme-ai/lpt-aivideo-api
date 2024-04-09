@@ -109,6 +109,11 @@ export class ApiStack extends cdk.Stack {
             methods: [apigwv2.HttpMethod.GET],
             integration: new HttpLambdaIntegration('ShowcaseIntegration', showcaseHandler)
         })
+        this.api.addRoutes({
+            path: '/v1/user/{userId}/generations',
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new HttpLambdaIntegration('ShowcaseIntegration', showcaseHandler)
+        })
 
         this.txt2ImgFuncUrl = txt2imgHandler.addFunctionUrl({
             authType: aws_lambda.FunctionUrlAuthType.NONE,

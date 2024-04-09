@@ -7,7 +7,7 @@ const requestGenerationItem = async (ddbClient: DDBClient, id: string | undefine
         return {
             statusCode: 404,
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 'error': `${id} does not exist.` })
+            body: JSON.stringify({ 'error': `id is required.` })
         }
     }
     try {
@@ -43,6 +43,30 @@ const requestVideos = async (ddbClient: DDBClient, pageKey: string | undefined):
         }
     }
 }
+const requestVideosByUser = async (ddbClient: DDBClient, userId: string | undefined, pageKey: string | undefined): Promise<APIGatewayProxyResult> => {
+    if (!userId) {
+        return {
+            statusCode: 404,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 'error': `UserId is required.` })
+        }
+    }
+    try {
+        const result = await ddbClient.readVideosByUser(userId, pageKey)
+        return {
+            statusCode: 200,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(result)
+        }
+    }
+    catch (e: any) {
+        return {
+            statusCode: e.status || e.info.status || 500,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 'error': `${e.message}` })
+        }
+    }
+}
 
 export const showcaseHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
     const logger: Logger = bunyan.createLogger({
@@ -52,16 +76,29 @@ export const showcaseHandler = async function (event: APIGatewayProxyEvent, cont
         requestId: context.awsRequestId,
     })
     logger.info(event)
-    const segs = event.requestContext.routeKey!.split('/')
-    const isGenerationItem = !segs.includes('generations')
 
     const ddbClient = new DDBClient({
         tableName: process.env.DDB_GENERATIONS_TABLENAME!,
         logger: logger
     })
-    if (isGenerationItem) {
+
+    const segs = event.requestContext.routeKey!.split('/')
+    const pageKey = event.queryStringParameters?.page
+    if (segs.includes('generations') && segs.includes('user')) {
+        //"GET /v1/user/{userId}/generations/"
+        return await requestVideosByUser(ddbClient, event.pathParameters?.userId, pageKey)
+    }
+    if (segs.includes('generations')) {
+        //"GET /v1/generations"
+        return await requestVideos(ddbClient, pageKey)
+    }
+    if (segs.includes('generation')) {
+        //"GET /v1/generation/{gid}"
         return await requestGenerationItem(ddbClient, event.pathParameters?.generationId)
     }
-    const pageKey = event.queryStringParameters?.page
-    return await requestVideos(ddbClient, pageKey)
+    return {
+        statusCode: 400,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: `${event.requestContext.routeKey} is not supported` })
+    }
 }

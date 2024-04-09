@@ -31,9 +31,18 @@ export class DDBError extends Error {
     }
 }
 
+const GSI_ACTION_TIMESTAMP_INDEX = 'action-timestamp-index'
+const GSI_USERID_TIMESTAMP_INDEX = 'userid-timestamp-index'
+
+const GSI: { [key: string]: { partitionKey: string, partitionKeyType: AttributeType, sortKey: string, sortKeyType: AttributeType } } = {
+    [GSI_ACTION_TIMESTAMP_INDEX]: { partitionKey: 'action', partitionKeyType: AttributeType.STRING, sortKey: 'timestamp', sortKeyType: AttributeType.NUMBER },
+    [GSI_USERID_TIMESTAMP_INDEX]: { partitionKey: 'userid', partitionKeyType: AttributeType.STRING, sortKey: 'timestamp', sortKeyType: AttributeType.NUMBER },
+}
+
 export class DDBClient {
     public static createTable(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
         if (type === 'generations') {
+            const indexesToCreate = { ...GSI }
             const table = new cdk.aws_dynamodb.Table(scope, tableName, {
                 tableName: tableName,
                 partitionKey: { name: 'id', type: AttributeType.STRING },
@@ -42,23 +51,30 @@ export class DDBClient {
                 billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
                 removalPolicy: cdk.RemovalPolicy.RETAIN,
             })
-            let shouldCreateIndex = true
             const ddb = new DynamoDB()
             ddb.describeTable({ TableName: tableName }, (_, data: DynamoDB.Types.DescribeTableOutput) => {
                 const indexes = data?.Table?.GlobalSecondaryIndexes || []
-                for (let index of indexes) {
-                    if (index.IndexName === 'action-timestamp-index') {
-                        shouldCreateIndex = false
-                        break
+                const indexNames = indexes.map(item => {
+                    return item.IndexName
+                })
+                const keys = Object.keys(indexesToCreate)
+                for (let key of keys) {
+                    if (indexNames.includes(key)) {
+                        delete indexesToCreate[key]
                     }
                 }
             })
-            if (shouldCreateIndex) {
-                table.addGlobalSecondaryIndex({
-                    indexName: 'action-timestamp-index',
-                    partitionKey: { name: 'action', type: AttributeType.STRING },
-                    sortKey: { name: 'timestamp', type: AttributeType.NUMBER }
-                })
+            const ins = Object.keys(indexesToCreate)
+            console.log(`indexes to create ${ins}`)
+            if (ins.length > 0) {
+                for (let iname of ins) {
+                    const itc = indexesToCreate[iname]
+                    table.addGlobalSecondaryIndex({
+                        indexName: iname,
+                        partitionKey: { name: itc.partitionKey, type: itc.partitionKeyType },
+                        sortKey: { name: itc.sortKey, type: itc.sortKeyType }
+                    })
+                }
             }
             return table
         }
@@ -86,7 +102,8 @@ export class DDBClient {
         input: Txt2imgInput | Img2imgInput | DDBImg2vidInput,
         outputs: Array<GenerationOutputItem>
         timestamp: number,
-        duration: number
+        duration: number,
+        userid?: string
     }) {
         let itemToSave = item
         const putReqs = [{
@@ -163,7 +180,7 @@ export class DDBClient {
             }
             const result = await this.ddb.query({
                 TableName: this.tableName,
-                IndexName: 'action-timestamp-index',
+                IndexName: GSI_ACTION_TIMESTAMP_INDEX,
                 KeyConditionExpression: '#action = :actionValue',
                 ExpressionAttributeNames: { '#action': 'action' },
                 ExpressionAttributeValues: { ":actionValue": generationType },
@@ -195,5 +212,56 @@ export class DDBClient {
                 throw ddbError
             }
         }
+    }
+    public async readVideosByUser(userid: string, pageKey?: string): Promise<any> {
+        let ddbError = null
+        try {
+            let startKey = undefined
+            if (pageKey) {
+                const segs = pageKey.split('-')
+                if (segs.length === 3) {
+                    startKey = {
+                        id: segs[0],
+                        userid: segs[1],
+                        timestamp: parseInt(segs[2])
+                    }
+                }
+            }
+            const result = await this.ddb.query({
+                TableName: this.tableName,
+                IndexName: GSI_USERID_TIMESTAMP_INDEX,
+                KeyConditionExpression: '#userid = :useridValue',
+                ExpressionAttributeNames: { '#userid': 'userid' },
+                ExpressionAttributeValues: { ":useridValue": userid },
+                ExclusiveStartKey: startKey,
+                ScanIndexForward: false,
+                Limit: 1
+            }).promise()
+
+            let nextPageKey = undefined
+            if (result.LastEvaluatedKey) {
+                this.logger?.info(result.LastEvaluatedKey)
+                nextPageKey = `${result.LastEvaluatedKey.id}-${result.LastEvaluatedKey.userid}-${result.LastEvaluatedKey.timestamp}`
+            }
+            return {
+                'next-page': nextPageKey,
+                items: result.Items ?? []
+            }
+        }
+        catch (e: any) {
+            ddbError = new DDBError(e.message, {
+                status: 500,
+                access: 'query',
+                filter: { type: userid }
+            })
+            ddbError.stack = e.stack
+        }
+        finally {
+            if (ddbError) {
+                this.logger?.error(ddbError.formatForLogger())
+                throw ddbError
+            }
+        }
+
     }
 }
