@@ -235,7 +235,7 @@ export class DDBClient {
                 ExpressionAttributeValues: { ":useridValue": userid },
                 ExclusiveStartKey: startKey,
                 ScanIndexForward: false,
-                Limit: 1
+                Limit: 10
             }).promise()
 
             let nextPageKey = undefined
