@@ -111,12 +111,13 @@ export class DDBClient {
             return await this.ddb.batchWrite(req).promise()
         }
         catch (e: any) {
-            const de = new DDBError(e.message, {
+            const ddbError = new DDBError(e.message, {
                 status: 500,
                 access: 'batchwrite',
             })
-            de.stack = e.stack
-            throw de
+            ddbError.stack = e.stack
+            this.logger?.error(ddbError?.formatForLogger())
+            throw ddbError
         }
     }
     public async readGeneration(id: string): Promise<GenerationItem> {
@@ -136,6 +137,7 @@ export class DDBClient {
                 access: 'query',
                 filter: { id: id }
             })
+            throw ddbError
         }
         catch (e: any) {
             ddbError = new DDBError(e.message, {
@@ -144,17 +146,14 @@ export class DDBClient {
                 filter: { id: id }
             })
             ddbError.stack = e.stack
-        }
-        finally {
             this.logger?.error(ddbError?.formatForLogger())
             throw ddbError
         }
     }
-    public async readVideos(pageKey?: string): Promise<GenerationsPage> {
+    public async readVideos(pageKey?: string): Promise<any> {
         return await this.readGenerations(GenerationType.IMG2VID, pageKey)
     }
     private async readGenerations(generationType: string, pageKey?: string): Promise<GenerationsPage> {
-        let ddbError = null
         try {
             let startKey = undefined
             if (pageKey) {
@@ -188,20 +187,17 @@ export class DDBClient {
             } as GenerationsPage
         }
         catch (e: any) {
-            ddbError = new DDBError(e.message, {
+            const ddbError = new DDBError(e.message, {
                 status: 500,
                 access: 'query',
                 filter: { type: generationType }
             })
             ddbError.stack = e.stack
-        }
-        finally {
             this.logger?.error(ddbError?.formatForLogger())
             throw ddbError
         }
     }
     public async readVideosByUser(userid: string, pageKey?: string): Promise<GenerationsPage> {
-        let ddbError = null
         try {
             let startKey = undefined
             if (pageKey) {
@@ -236,14 +232,12 @@ export class DDBClient {
             } as GenerationsPage
         }
         catch (e: any) {
-            ddbError = new DDBError(e.message, {
+            const ddbError = new DDBError(e.message, {
                 status: 500,
                 access: 'query',
                 filter: { type: userid }
             })
             ddbError.stack = e.stack
-        }
-        finally {
             this.logger?.error(ddbError?.formatForLogger())
             throw ddbError
         }

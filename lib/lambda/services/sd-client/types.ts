@@ -46,7 +46,8 @@ export type Img2vidInput = {
     output_type?: VideoExtension
     'user_id': string
 }
-type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>;
+type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>
+
 export interface GenerationItem {
     id: string,
     timestamp: number,
@@ -56,12 +57,11 @@ export interface GenerationItem {
     outputs: Array<GenerationOutputItem>,
     userid?: string
 }
+
 export interface GenerationsPage {
     "next-page": string
     items: Array<GenerationItem>
 }
-
-
 
 interface LoggerSDProviderError {
     errInfo: SDProviderErrorInfo
