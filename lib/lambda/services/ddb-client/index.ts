@@ -3,9 +3,8 @@ import { Construct } from 'constructs'
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
 import { DynamoDB } from 'aws-sdk'
 import { ILogger } from '../metrics'
-import { GenerationOutputItem, GenerationType, Img2imgInput, Img2vidInput, Txt2imgInput } from '../sd-client/types'
+import { GenerationItem, GenerationType, GenerationsPage } from '../sd-client/types'
 
-type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>;
 export interface LoggerDDBError {
     errInfo: DDBErrorInfo
     err: DDBError
@@ -96,15 +95,7 @@ export class DDBClient {
         this.tableName = props.tableName
         this.logger = props.logger
     }
-    public async saveGeneration(item: {
-        id: string,
-        action: GenerationType,
-        input: Txt2imgInput | Img2imgInput | DDBImg2vidInput,
-        outputs: Array<GenerationOutputItem>
-        timestamp: number,
-        duration: number,
-        userid?: string
-    }) {
+    public async saveGeneration(item: GenerationItem) {
         let itemToSave = item
         const putReqs = [{
             PutRequest: {
@@ -128,7 +119,7 @@ export class DDBClient {
             throw de
         }
     }
-    public async readGeneration(id: string): Promise<any> {
+    public async readGeneration(id: string): Promise<GenerationItem> {
         let ddbError = null
         try {
             const result = await this.ddb.query({
@@ -138,7 +129,7 @@ export class DDBClient {
             }).promise()
 
             if (result.Items && result.Items.length > 0) {
-                return result.Items[0]
+                return result.Items[0] as GenerationItem
             }
             ddbError = new DDBError(`No result`, {
                 status: 404,
@@ -155,16 +146,14 @@ export class DDBClient {
             ddbError.stack = e.stack
         }
         finally {
-            if (ddbError) {
-                this.logger?.error(ddbError.formatForLogger())
-                throw ddbError
-            }
+            this.logger?.error(ddbError?.formatForLogger())
+            throw ddbError
         }
     }
-    public async readVideos(pageKey?: string): Promise<any> {
-        return await this.readGenerations('img2vid', pageKey)
+    public async readVideos(pageKey?: string): Promise<GenerationsPage> {
+        return await this.readGenerations(GenerationType.IMG2VID, pageKey)
     }
-    private async readGenerations(generationType: string, pageKey?: string): Promise<any> {
+    private async readGenerations(generationType: string, pageKey?: string): Promise<GenerationsPage> {
         let ddbError = null
         try {
             let startKey = undefined
@@ -196,7 +185,7 @@ export class DDBClient {
             return {
                 'next-page': nextPageKey,
                 items: result.Items ?? []
-            }
+            } as GenerationsPage
         }
         catch (e: any) {
             ddbError = new DDBError(e.message, {
@@ -207,13 +196,11 @@ export class DDBClient {
             ddbError.stack = e.stack
         }
         finally {
-            if (ddbError) {
-                this.logger?.error(ddbError.formatForLogger())
-                throw ddbError
-            }
+            this.logger?.error(ddbError?.formatForLogger())
+            throw ddbError
         }
     }
-    public async readVideosByUser(userid: string, pageKey?: string): Promise<any> {
+    public async readVideosByUser(userid: string, pageKey?: string): Promise<GenerationsPage> {
         let ddbError = null
         try {
             let startKey = undefined
@@ -246,7 +233,7 @@ export class DDBClient {
             return {
                 'next-page': nextPageKey,
                 items: result.Items ?? []
-            }
+            } as GenerationsPage
         }
         catch (e: any) {
             ddbError = new DDBError(e.message, {
@@ -257,11 +244,8 @@ export class DDBClient {
             ddbError.stack = e.stack
         }
         finally {
-            if (ddbError) {
-                this.logger?.error(ddbError.formatForLogger())
-                throw ddbError
-            }
+            this.logger?.error(ddbError?.formatForLogger())
+            throw ddbError
         }
-
     }
 }

@@ -46,6 +46,20 @@ export type Img2vidInput = {
     output_type?: VideoExtension
     'user_id': string
 }
+type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>;
+export interface GenerationItem {
+    id: string,
+    timestamp: number,
+    action: GenerationType,
+    input: Txt2imgInput | Img2imgInput | DDBImg2vidInput,
+    duration: number,
+    outputs: Array<GenerationOutputItem>,
+    userid?: string
+}
+export interface GenerationsPage {
+    "next-page": string
+    items: Array<GenerationItem>
+}
 
 
 
