@@ -16,6 +16,7 @@ export type Txt2imgInput = {
     'width': number,
     'height': number,
     'num_images_per_prompt': number
+    'user_id': string
 }
 
 export type Img2imgInput = {
@@ -27,6 +28,7 @@ export type Img2imgInput = {
     'guidance_scale': number,
     'seed'?: number,
     'num_images_per_prompt': number
+    'user_id': string
 }
 
 export type Img2vidInput = {
@@ -42,6 +44,21 @@ export type Img2vidInput = {
     overlay_text?: string
     image_generation_id?: string
     output_type?: VideoExtension
+    'user_id': string
+}
+type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>;
+export interface GenerationItem {
+    id: string,
+    timestamp: number,
+    action: GenerationType,
+    input: Txt2imgInput | Img2imgInput | DDBImg2vidInput,
+    duration: number,
+    outputs: Array<GenerationOutputItem>,
+    userid?: string
+}
+export interface GenerationsPage {
+    "next-page": string
+    items: Array<GenerationItem>
 }
 
 

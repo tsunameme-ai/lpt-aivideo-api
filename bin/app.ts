@@ -30,13 +30,3 @@ new ApiStack(app, 'VideoServiceDevAPIStack', {
     falAiEndpoint: process.env.FALAI_ENDPOINT!,
     falAiApiKey: process.env.FALAI_APIKEY!
 });
-
-new ApiStack(app, 'VideoServiceLocalAPIStack', {
-    apiName: 'VideoServiceLocalAPI',
-    ddbGenerationsTableName: 'generations-dev1',
-    sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!,
-    ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!,
-    discordChannel: process.env.DISCORD_WEBHOOK_DEV!,
-    falAiEndpoint: process.env.FALAI_ENDPOINT!,
-    falAiApiKey: process.env.FALAI_APIKEY!
-});

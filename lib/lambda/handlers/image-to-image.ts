@@ -38,7 +38,8 @@ export const imageToImageHandler = async function (event: APIGatewayProxyEvent, 
             input: body,
             outputs: result.images,
             timestamp: timestamp,
-            duration: new Date().getTime() - timestamp
+            duration: new Date().getTime() - timestamp,
+            userid: body.user_id
         })
         return {
             statusCode: 200,
