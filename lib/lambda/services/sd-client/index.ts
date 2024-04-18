@@ -107,14 +107,14 @@ export class SDClient {
             resError = e
 
         }
-        if (this.fallbackClient) {
+        if (resError && this.fallbackClient) {
             const data = await this.fallbackClient?.img2vid(id, params, 300000)
             if (data.images.length > 0) {
                 output = data.images[0]
             }
         }
         if (output) {
-            output.url = await this.processVideo(id, params.width, output.url, params.output_type || 'gif', params.overlay_base64)
+            output.url = await this.processVideo(id, params.width, output.url, params.output_type || 'gif', params.overlay_base64, params.output_width)
             return {
                 id: id,
                 images: [output]
@@ -172,7 +172,7 @@ export class SDClient {
         }
     }
 
-    private async prepareForVideoProcessing(videoId: string, width: number, videoUrl: string, ext: VideoExtension, imgBase64Str?: string): Promise<VideoProcessingParams> {
+    private async prepareForVideoProcessing(videoId: string, width: number, videoUrl: string, ext: VideoExtension, imgBase64Str?: string, outputWidth?: number): Promise<VideoProcessingParams> {
         this.logger?.info(`prepareForVideoProcessing ${videoId} ${width} ${videoUrl} ${ext}`)
         const ps = [this.s3Client.remoteToS3(this.s3BucketSrc, `${videoId}.mp4`, videoUrl)]
         const ops: VideoProcessingOperation[] = []
@@ -197,14 +197,15 @@ export class SDClient {
             s3BucketSrc: this.s3BucketSrc,
             videoId: videoId,
             width: width,
+            outputWidth: outputWidth ?? width,
             ops: ops
         }
 
     }
 
 
-    public async processVideo(id: string, width: number, videoUrl: string, ext: VideoExtension, imgBase64Str?: string): Promise<string> {
-        const vidParmas = await this.prepareForVideoProcessing(id, width, videoUrl, ext, imgBase64Str)
+    public async processVideo(id: string, width: number, videoUrl: string, ext: VideoExtension, imgBase64Str?: string, outputWidth?: number): Promise<string> {
+        const vidParmas = await this.prepareForVideoProcessing(id, width, videoUrl, ext, imgBase64Str, outputWidth)
         if (vidParmas.ops.length > 0) {
             return await this.ffmpegClient.processVideo(vidParmas)
         }

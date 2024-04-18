@@ -1,6 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg'
-import { S3Client } from '../s3';
-import fs, { PathLike } from 'fs'
+import fs from 'fs'
 import { ILogger } from '../metrics';
 import { VideoProcessingParams, VideoProcessingOperation } from './types';
 
@@ -34,7 +33,7 @@ export class FFMPEGClient {
                 videoLocalFile = outputVideoLocalFile
             }
             if (hasOpGif) {
-                await this.convertToGif(videoLocalFile, outputLocalFile)
+                await this.convertToGif(videoLocalFile, outputLocalFile, params.outputWidth)
             }
 
             destUrl = await params.s3.localToS3(params.s3BucketDst, `${params.videoId}.${ext}`, outputLocalFile)
@@ -73,12 +72,12 @@ export class FFMPEGClient {
         })
     }
 
-    private async convertToGif(videoFilePath: string, outputFilePath: string): Promise<string> {
+    private async convertToGif(videoFilePath: string, outputFilePath: string, width: number): Promise<string> {
         this.logger?.info({ message: 'convertToGif', videoFilePath, outputFilePath })
         return new Promise((resolve, reject) => {
             ffmpeg(videoFilePath)
                 .complexFilter([
-                    `[0:v]split [a][b];[a] palettegen [p];[b][p] paletteuse,fps=6`
+                    `[0:v]scale=${width}:-1,split [a][b];[a] palettegen [p];[b][p] paletteuse,fps=6`
                 ])
                 .on('end', function () {
                     resolve(outputFilePath)
@@ -88,15 +87,5 @@ export class FFMPEGClient {
                 })
                 .save(outputFilePath);
         })
-    }
-
-
-    private async execImageOverVideo(videoFilePath: string, imageFilePath: string, width: number, outputVideoFilePath: string, outputGifFilePath?: string): Promise<string> {
-        this.logger?.info({ message: 'execImageOverVideo', videoFilePath, imageFilePath, width, outputVideoFilePath })
-        let destUrl = await this.addImage(videoFilePath, imageFilePath, width, outputVideoFilePath)
-        if (outputGifFilePath) {
-            destUrl = await this.convertToGif(outputVideoFilePath, outputGifFilePath)
-        }
-        return destUrl
     }
 }

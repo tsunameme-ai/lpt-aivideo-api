@@ -12,5 +12,6 @@ export interface VideoProcessingParams {
     s3BucketDst: string,
     videoId: string,
     width: number,
+    outputWidth: number
     ops: VideoProcessingOperation[]
 }

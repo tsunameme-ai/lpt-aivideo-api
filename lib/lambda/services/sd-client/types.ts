@@ -44,6 +44,7 @@ export type Img2vidInput = {
     overlay_text?: string
     image_generation_id?: string
     output_type?: VideoExtension
+    output_width?: number
     'user_id': string
 }
 type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>
