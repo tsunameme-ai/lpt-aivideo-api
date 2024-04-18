@@ -35,8 +35,14 @@ export class FFMPEGClient {
             if (hasOpGif) {
                 await this.convertToGif(videoLocalFile, outputLocalFile, params.outputWidth)
             }
+            const body = await fs.readFileSync(outputLocalFile)
+            destUrl = await params.s3.upload({
+                Bucket: params.s3BucketDst,
+                Key: `${params.videoId}.${ext}`,
+                Body: body,
+                ContentType: ext === 'gif' ? 'image/gif' : 'video/mp4'
+            })
 
-            destUrl = await params.s3.localToS3(params.s3BucketDst, `${params.videoId}.${ext}`, outputLocalFile)
             await this.removeFile(outputLocalFile)
             return destUrl
         }

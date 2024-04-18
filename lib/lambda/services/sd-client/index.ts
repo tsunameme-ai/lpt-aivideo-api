@@ -6,6 +6,7 @@ import { FFMPEGClient } from '../ffmpeg'
 import { GenerationOutput, GenerationOutputItem, Img2imgInput, Img2vidInput, SDProviderError, Txt2imgInput } from './types'
 import { FalAIClient } from './fallback'
 import { VideoExtension, VideoProcessingOperation, VideoProcessingParams } from '../ffmpeg/types'
+import { fixTruncatedImageURL } from './utils'
 
 
 interface SDClientProps {
@@ -87,7 +88,9 @@ export class SDClient {
 
     public async img2vid(id: string, params: Img2vidInput): Promise<GenerationOutput> {
         let resError = undefined
-        const imageData = await this.downloadImageData(params.image_url)
+        const imgurl = fixTruncatedImageURL(params.image_url)
+        console.log(`??? img2vid ${imgurl}`)
+        const imageData = await this.downloadImageData(imgurl)
         const fd = new FormData()
         fd.append('image', imageData)
         fd.append('model_id', params.model_id)

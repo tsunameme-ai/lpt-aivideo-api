@@ -2,6 +2,7 @@
 import axios from 'axios'
 import { ILogger, IMetric, MetricLoggerUnit } from '../metrics'
 import { GenerationOutput, GenerationOutputItem, Img2vidInput, SDProviderError, Txt2imgInput } from './types'
+import { fixTruncatedImageURL } from './utils'
 
 interface FalAIClientProps {
     baseURL: string
@@ -60,12 +61,7 @@ export class FalAIClient {
     }
 
     public async img2vid(id: string, params: Img2vidInput, timeoutMS: number): Promise<GenerationOutput> {
-
-        //Use fixed image if url conains livepeer s3
-        const imgurl = params.image_url.indexOf('https://storage.googleapis.com/livepeer-ai-video-dev') >= 0 ?
-            `https://dca-fix-images.livepeer.fun/?image=${params.image_url}`
-            : params.image_url
-
+        const imgurl = fixTruncatedImageURL(params.image_url)
         const output = await this.sendRequest('/fast-svd', {
             image_url: imgurl,
             motion_bucket_id: params.motion_bucket_id,
