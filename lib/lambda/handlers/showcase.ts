@@ -2,7 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda
 import { default as bunyan, default as Logger } from 'bunyan'
 import { DDBClient } from "../services/ddb-client";
 
-const requestGenerationItem = async (ddbClient: DDBClient, id: string | undefined): Promise<APIGatewayProxyResult> => {
+const requestGenerationItem = async (ddbClient: DDBClient, id?: string): Promise<APIGatewayProxyResult> => {
     if (!id) {
         return {
             statusCode: 404,
@@ -26,9 +26,9 @@ const requestGenerationItem = async (ddbClient: DDBClient, id: string | undefine
         }
     }
 }
-const requestVideos = async (ddbClient: DDBClient, pageKey: string | undefined): Promise<APIGatewayProxyResult> => {
+const requestVideos = async (ddbClient: DDBClient, pageKey?: string, limit?: number): Promise<APIGatewayProxyResult> => {
     try {
-        const result = await ddbClient.readVideos(pageKey)
+        const result = await ddbClient.readVideos(pageKey, limit)
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },
@@ -43,7 +43,7 @@ const requestVideos = async (ddbClient: DDBClient, pageKey: string | undefined):
         }
     }
 }
-const requestVideosByUser = async (ddbClient: DDBClient, userId: string | undefined, pageKey: string | undefined): Promise<APIGatewayProxyResult> => {
+const requestVideosByUser = async (ddbClient: DDBClient, userId?: string, pageKey?: string, limit?: number): Promise<APIGatewayProxyResult> => {
     if (!userId) {
         return {
             statusCode: 404,
@@ -52,7 +52,7 @@ const requestVideosByUser = async (ddbClient: DDBClient, userId: string | undefi
         }
     }
     try {
-        const result = await ddbClient.readVideosByUser(userId, pageKey)
+        const result = await ddbClient.readVideosByUser(userId, pageKey, limit)
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },
@@ -84,13 +84,14 @@ export const showcaseHandler = async function (event: APIGatewayProxyEvent, cont
 
     const segs = event.requestContext.routeKey!.split('/')
     const pageKey = event.queryStringParameters?.page
+    const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters?.limit) : undefined
     if (segs.includes('generations') && segs.includes('user')) {
         //"GET /v1/user/{userId}/generations/"
-        return await requestVideosByUser(ddbClient, event.pathParameters?.userId, pageKey)
+        return await requestVideosByUser(ddbClient, event.pathParameters?.userId, pageKey, limit)
     }
     if (segs.includes('generations')) {
         //"GET /v1/generations"
-        return await requestVideos(ddbClient, pageKey)
+        return await requestVideos(ddbClient, pageKey, limit)
     }
     if (segs.includes('generation')) {
         //"GET /v1/generation/{gid}"

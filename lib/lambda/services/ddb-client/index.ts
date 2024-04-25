@@ -150,10 +150,10 @@ export class DDBClient {
             throw ddbError
         }
     }
-    public async readVideos(pageKey?: string): Promise<any> {
-        return await this.readGenerations(GenerationType.IMG2VID, pageKey)
+    public async readVideos(pageKey?: string, limit?: number): Promise<any> {
+        return await this.readGenerations(GenerationType.IMG2VID, pageKey, limit)
     }
-    private async readGenerations(generationType: string, pageKey?: string): Promise<GenerationsPage> {
+    private async readGenerations(generationType: string, pageKey?: string, limit?: number): Promise<GenerationsPage> {
         try {
             let startKey = undefined
             if (pageKey) {
@@ -174,7 +174,7 @@ export class DDBClient {
                 ExpressionAttributeValues: { ":actionValue": generationType },
                 ExclusiveStartKey: startKey,
                 ScanIndexForward: false,
-                Limit: 10
+                Limit: limit ?? 12
             }).promise()
 
             let nextPageKey = undefined
@@ -197,7 +197,7 @@ export class DDBClient {
             throw ddbError
         }
     }
-    public async readVideosByUser(userid: string, pageKey?: string): Promise<GenerationsPage> {
+    public async readVideosByUser(userid: string, pageKey?: string, limit?: number): Promise<GenerationsPage> {
         try {
             let startKey = undefined
             if (pageKey) {
@@ -218,7 +218,7 @@ export class DDBClient {
                 ExpressionAttributeValues: { ":useridValue": userid },
                 ExclusiveStartKey: startKey,
                 ScanIndexForward: false,
-                Limit: 10
+                Limit: limit ?? 12
             }).promise()
 
             let nextPageKey = undefined
