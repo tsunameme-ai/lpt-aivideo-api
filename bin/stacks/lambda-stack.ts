@@ -10,7 +10,6 @@ import {
 export enum LambdaType {
     FFMPEG = 'FFMPEG',
     TXT2IMG = 'TXT2IMG',
-    IMG2IMG = 'IMG2IMG',
     IMG2VID = 'IMG2VID',
     SHOWCASE = 'SHOWCASE'
 }
@@ -18,6 +17,8 @@ export enum LambdaType {
 export interface LambdaStackProps extends cdk.StackProps {
     lambdaName: string,
     type: LambdaType,
+    awsRegion: string,
+    awsAccount: string,
     ddbGenerationsTableName?: string,
     sdProviderEndpoint?: string,
     ffmpegLambdaLayerArn?: string
@@ -30,7 +31,70 @@ export class LambdaStack extends cdk.NestedStack {
     public readonly lambda: aws_lambda_nodejs.NodejsFunction
     constructor(scope: Construct, name: string, props: LambdaStackProps) {
         super(scope, name, props)
-        this.lambda = this.buildLambda(props)
+        const ddbPolicyR = this.createDDBReadOnlyPolicy(props)
+        const ddbPolicyRW = this.createDDBReadWritePolicy(props)
+        this.lambda = this.buildLambda(props, ddbPolicyR, ddbPolicyRW)
+    }
+    private createDDBReadWritePolicy(props: LambdaStackProps) {
+        const doc = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Action": [
+                        "dynamodb:BatchGetItem",
+                        "dynamodb:BatchWriteItem",
+                        "dynamodb:ConditionCheckItem",
+                        "dynamodb:DeleteItem",
+                        "dynamodb:DescribeTable",
+                        "dynamodb:GetItem",
+                        "dynamodb:GetRecords",
+                        "dynamodb:GetShardIterator",
+                        "dynamodb:PutItem",
+                        "dynamodb:Query",
+                        "dynamodb:Scan",
+                        "dynamodb:UpdateItem"
+                    ],
+                    "Resource": [
+                        `arn:aws:dynamodb:${props.awsRegion}:${props.awsAccount}:table/${props.ddbGenerationsTableName}/index/*`,
+                        `arn:aws:dynamodb:${props.awsRegion}:${props.awsAccount}:table/${props.ddbGenerationsTableName}`
+                    ],
+                    "Effect": "Allow"
+                }
+            ]
+        }
+
+        return new aws_iam.Policy(this, 'ddb-readwritepolicy', {
+            policyName: 'ddb-readwritepolicy',
+            document: aws_iam.PolicyDocument.fromJson(doc)
+        })
+    }
+    private createDDBReadOnlyPolicy(props: LambdaStackProps): aws_iam.Policy {
+        const doc = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Action": [
+                        "dynamodb:BatchGetItem",
+                        "dynamodb:ConditionCheckItem",
+                        "dynamodb:DescribeTable",
+                        "dynamodb:GetItem",
+                        "dynamodb:GetRecords",
+                        "dynamodb:GetShardIterator",
+                        "dynamodb:Query",
+                        "dynamodb:Scan"
+                    ],
+                    "Resource": [
+                        `arn:aws:dynamodb:${props.awsRegion}:${props.awsAccount}:table/${props.ddbGenerationsTableName}/index/*`,
+                        `arn:aws:dynamodb:${props.awsRegion}:${props.awsAccount}:table/${props.ddbGenerationsTableName}`
+                    ],
+                    "Effect": "Allow"
+                }
+            ]
+        }
+        return new aws_iam.Policy(this, 'ddb-readonlypolicy', {
+            policyName: 'ddb-readonlypolicy',
+            document: aws_iam.PolicyDocument.fromJson(doc)
+        })
     }
     private execBuildLambda(props: {
         lambdaName: string,
@@ -59,7 +123,7 @@ export class LambdaStack extends cdk.NestedStack {
             layers: props.layers
         })
     }
-    private buildLambda(props: LambdaStackProps): aws_lambda_nodejs.NodejsFunction {
+    private buildLambda(props: LambdaStackProps, ddbPolicyR: aws_iam.Policy, ddbPolicyRW: aws_iam.Policy): aws_lambda_nodejs.NodejsFunction {
         switch (props.type) {
             case LambdaType.FFMPEG: {
                 const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
@@ -94,6 +158,7 @@ export class LambdaStack extends cdk.NestedStack {
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
                     ],
                 })
+                lambdaRole.attachInlinePolicy(ddbPolicyRW)
                 return this.execBuildLambda({
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,
@@ -106,28 +171,6 @@ export class LambdaStack extends cdk.NestedStack {
                         FALAI_ENDPOINT: props.falAiEndpoint!,
                         FALAI_APIKEY: props.falAiApiKey!,
                         LPT_TIMEOUTMS_TXT2IMG: '20000'
-                    }
-                })
-            }
-            case LambdaType.IMG2IMG: {
-                const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
-                    assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
-                    managedPolicies: [
-                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
-                    ],
-                })
-                return this.execBuildLambda({
-                    lambdaName: props.lambdaName,
-                    lambdaRole: lambdaRole,
-                    timeout: cdk.Duration.seconds(30),
-                    handlerName: 'imageToImageHandler',
-                    env: {
-                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,
-                        DISCORD_WEBHOOK: props.discordChannel!,
-                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!,
-                        FALAI_ENDPOINT: props.falAiEndpoint!,
-                        FALAI_APIKEY: props.falAiApiKey!
                     }
                 })
             }
@@ -144,6 +187,7 @@ export class LambdaStack extends cdk.NestedStack {
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
                     ],
                 })
+                lambdaRole.attachInlinePolicy(ddbPolicyRW)
 
                 return this.execBuildLambda({
                     lambdaName: props.lambdaName,
@@ -169,8 +213,10 @@ export class LambdaStack extends cdk.NestedStack {
                     managedPolicies: [
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonDynamoDBReadOnlyAccess'),
                     ],
                 })
+                lambdaRole.attachInlinePolicy(ddbPolicyR)
                 return this.execBuildLambda({
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,

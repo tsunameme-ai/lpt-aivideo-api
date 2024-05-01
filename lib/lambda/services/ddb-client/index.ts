@@ -1,9 +1,10 @@
 import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
-import { DynamoDB } from 'aws-sdk'
+import { AWSError, DynamoDB } from 'aws-sdk'
 import { ILogger } from '../metrics'
 import { GenerationItem, GenerationType, GenerationsPage } from '../sd-client/types'
+import { DescribeTableOutput, TableDescription } from 'aws-sdk/clients/dynamodb'
 
 export interface LoggerDDBError {
     errInfo: DDBErrorInfo
@@ -39,6 +40,21 @@ const GSI: { [key: string]: { partitionKey: string, partitionKeyType: AttributeT
 }
 
 export class DDBClient {
+    public static async createTableIfNotExist(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
+        const ddb = new DynamoDB()
+
+        try {
+            const response = await ddb.describeTable({ TableName: tableName }).promise()
+            if (response.Table) {
+                return
+            }
+        }
+        catch (e: any) {
+
+        }
+        this.createTable(scope, tableName, type)
+    }
+
     public static createTable(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
         if (type === 'generations') {
             const indexesToCreate = { ...GSI }
