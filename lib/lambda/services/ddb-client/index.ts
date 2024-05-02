@@ -270,19 +270,19 @@ export class DDBClient {
             if (record.userid === userId) {
                 return
             }
-            if (record.userid) {
+            //Let anyone takeover static
+            if (record.userid && assetId != 'static') {
                 throw new DDBError(`${assetId} is not claimable.`, {
                     status: 401,
                     access: 'claim',
                 })
             }
-            if ((record.input as any).salt != salt) {
-                throw new DDBError(`${assetId} is not claimable.`, {
-                    status: 401,
-                    access: 'claim',
-                })
-
-            }
+            // if ((record.input as any).salt != salt) {
+            //     throw new DDBError(`${assetId} salt doesn't match ${(record.input as any).salt} vs ${salt}`, {
+            //         status: 401,
+            //         access: 'claim',
+            //     })
+            // }
             await this.ddb.update({
                 TableName: this.tableName,
                 Key: { id: assetId, timestamp: record.timestamp },
