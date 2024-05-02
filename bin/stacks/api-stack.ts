@@ -15,6 +15,7 @@ export interface APIStackProps extends cdk.StackProps {
     discordChannel: string
     falAiEndpoint: string
     falAiApiKey: string
+    privyAppId: string
 }
 
 export class ApiStack extends cdk.Stack {
@@ -53,7 +54,8 @@ export class ApiStack extends cdk.Stack {
             sdProviderEndpoint: props.sdProviderEndpoint,
             discordChannel: props.discordChannel,
             falAiEndpoint: props.falAiEndpoint,
-            falAiApiKey: props.falAiApiKey
+            falAiApiKey: props.falAiApiKey,
+            privyAppId: props.privyAppId
         })
 
         const { lambda: img2vidHandler } = new LambdaStack(this, 'Img2VidLambdaStack', {
@@ -66,7 +68,8 @@ export class ApiStack extends cdk.Stack {
             sdProviderEndpoint: props.sdProviderEndpoint,
             discordChannel: props.discordChannel,
             falAiEndpoint: props.falAiEndpoint,
-            falAiApiKey: props.falAiApiKey
+            falAiApiKey: props.falAiApiKey,
+            privyAppId: props.privyAppId
         })
 
 
@@ -76,7 +79,18 @@ export class ApiStack extends cdk.Stack {
             awsAccount: props.awsAccount,
             type: LambdaType.SHOWCASE,
             ddbGenerationsTableName: props.ddbGenerationsTableName,
-            discordChannel: props.discordChannel
+            discordChannel: props.discordChannel,
+            privyAppId: props.privyAppId
+        })
+
+        const { lambda: userAssetHandler } = new LambdaStack(this, 'UserAssetLambdaStack', {
+            lambdaName: 'UserAssetLambda',
+            awsRegion: props.awsRegion,
+            awsAccount: props.awsAccount,
+            type: LambdaType.USERASSET,
+            ddbGenerationsTableName: props.ddbGenerationsTableName,
+            discordChannel: props.discordChannel,
+            privyAppId: props.privyAppId
         })
 
         this.api.root.addResource('text-to-image').addMethod('POST', new apigw.LambdaIntegration(txt2imgHandler))
@@ -92,6 +106,14 @@ export class ApiStack extends cdk.Stack {
 
         // v1/usergens/{proxy+}
         v1Res.addResource('usergens').addProxy({ anyMethod: false }).addMethod('GET', new apigw.LambdaIntegration(showcaseHandler))
+
+        // v1/claim/{proxy+}
+        v1Res.addResource('claim').addProxy({ anyMethod: false }).addMethod('GET', new apigw.LambdaIntegration(userAssetHandler))
+
+        // v1/publish/{proxy+}
+        v1Res.addResource('publish').addProxy({ anyMethod: false }).addMethod('GET', new apigw.LambdaIntegration(userAssetHandler))
+
+
         this.img2VidFuncUrl = img2vidHandler.addFunctionUrl({
             authType: aws_lambda.FunctionUrlAuthType.NONE,
         });

@@ -1,10 +1,9 @@
 import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
-import { AWSError, DynamoDB } from 'aws-sdk'
+import { DynamoDB } from 'aws-sdk'
 import { ILogger } from '../metrics'
 import { GenerationItem, GenerationType, GenerationsPage } from '../sd-client/types'
-import { DescribeTableOutput, TableDescription } from 'aws-sdk/clients/dynamodb'
 
 export interface LoggerDDBError {
     errInfo: DDBErrorInfo
@@ -13,7 +12,7 @@ export interface LoggerDDBError {
 
 export interface DDBErrorInfo {
     status: number,
-    access: 'query' | 'scan' | 'batchwrite',
+    access: string,
     filter?: { [key: string]: string }
 }
 
@@ -129,7 +128,7 @@ export class DDBClient {
         catch (e: any) {
             const ddbError = new DDBError(e.message, {
                 status: 500,
-                access: 'batchwrite',
+                access: 'saveGeneration',
             })
             ddbError.stack = e.stack
             this.logger?.error(ddbError?.formatForLogger())
@@ -150,7 +149,7 @@ export class DDBClient {
             }
             ddbError = new DDBError(`No result`, {
                 status: 404,
-                access: 'query',
+                access: 'readGeneration',
                 filter: { id: id }
             })
             throw ddbError
@@ -158,7 +157,7 @@ export class DDBClient {
         catch (e: any) {
             ddbError = new DDBError(e.message, {
                 status: 500,
-                access: 'query',
+                access: 'readGeneration',
                 filter: { id: id }
             })
             ddbError.stack = e.stack
@@ -205,7 +204,7 @@ export class DDBClient {
         catch (e: any) {
             const ddbError = new DDBError(e.message, {
                 status: 500,
-                access: 'query',
+                access: 'readGenerations',
                 filter: { type: generationType }
             })
             ddbError.stack = e.stack
@@ -250,12 +249,85 @@ export class DDBClient {
         catch (e: any) {
             const ddbError = new DDBError(e.message, {
                 status: 500,
-                access: 'query',
+                access: 'readVideosByUser',
                 filter: { type: userid }
             })
             ddbError.stack = e.stack
             this.logger?.error(ddbError?.formatForLogger())
             throw ddbError
         }
+    }
+
+    public async claim(userId: string, assetId: string, salt: string) {
+        try {
+            const record = await this.readGeneration(assetId)
+            if (!record) {
+                throw new DDBError(`${assetId} is not found.`, {
+                    status: 404,
+                    access: 'claim',
+                })
+            }
+            if (record.userid === userId) {
+                return
+            }
+            if (record.userid) {
+                throw new DDBError(`${assetId} is not claimable.`, {
+                    status: 401,
+                    access: 'claim',
+                })
+            }
+            if ((record.input as any).salt != salt) {
+                throw new DDBError(`${assetId} is not claimable.`, {
+                    status: 401,
+                    access: 'claim',
+                })
+
+            }
+            await this.ddb.update({
+                TableName: this.tableName,
+                Key: { id: assetId, timestamp: record.timestamp },
+                UpdateExpression: `SET userid = :userid`,
+                ExpressionAttributeValues: { ':userid': userId }
+            }).promise()
+
+        } catch (e: any) {
+            const ddbError = new DDBError(e.message, {
+                status: e.status || e.info.status || 500,
+                access: 'claim',
+                filter: { userId, assetId }
+            })
+            ddbError.stack = e.stack
+            this.logger?.error(ddbError?.formatForLogger())
+            throw ddbError
+        }
+    }
+
+    public async publish(userId: string, assetId: string) {
+        try {
+            const record = await this.readGeneration(assetId)
+            if (!record) {
+                throw new DDBError(`${assetId} is not found.`, {
+                    status: 404,
+                    access: 'readGeneration',
+                })
+            }
+            // await this.ddb.update({
+            //     TableName: this.tableName,
+            //     Key: { id: assetId, timestamp: record.timestamp },
+            //     UpdateExpression: `SET userid = :userid`,
+            //     ExpressionAttributeValues: { 'userid': userId }
+            // }).promise()
+
+        } catch (e: any) {
+            const ddbError = new DDBError(e.message, {
+                status: e.status || e.info.status || 500,
+                access: 'claim',
+                filter: { userId, assetId }
+            })
+            ddbError.stack = e.stack
+            this.logger?.error(ddbError?.formatForLogger())
+            throw ddbError
+        }
+
     }
 }

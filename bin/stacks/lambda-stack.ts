@@ -11,7 +11,8 @@ export enum LambdaType {
     FFMPEG = 'FFMPEG',
     TXT2IMG = 'TXT2IMG',
     IMG2VID = 'IMG2VID',
-    SHOWCASE = 'SHOWCASE'
+    SHOWCASE = 'SHOWCASE',
+    USERASSET = 'USERASSET'
 }
 
 export interface LambdaStackProps extends cdk.StackProps {
@@ -25,6 +26,7 @@ export interface LambdaStackProps extends cdk.StackProps {
     discordChannel?: string
     falAiEndpoint?: string
     falAiApiKey?: string
+    privyAppId?: string
 }
 
 export class LambdaStack extends cdk.NestedStack {
@@ -213,7 +215,6 @@ export class LambdaStack extends cdk.NestedStack {
                     managedPolicies: [
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
-                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonDynamoDBReadOnlyAccess'),
                     ],
                 })
                 lambdaRole.attachInlinePolicy(ddbPolicyR)
@@ -225,6 +226,28 @@ export class LambdaStack extends cdk.NestedStack {
                     env: {
                         DISCORD_WEBHOOK: props.discordChannel!,
                         DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!
+                    }
+                })
+
+            }
+            case LambdaType.USERASSET: {
+                const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
+                    assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
+                    managedPolicies: [
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
+                    ],
+                })
+                lambdaRole.attachInlinePolicy(ddbPolicyRW)
+                console.log(`???? props.privyAppId ${props.privyAppId}`)
+                return this.execBuildLambda({
+                    lambdaName: props.lambdaName,
+                    lambdaRole: lambdaRole,
+                    timeout: cdk.Duration.seconds(29),
+                    handlerName: 'userAssetHandler',
+                    env: {
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!,
+                        PRIVY_APPID: props.privyAppId!
                     }
                 })
 

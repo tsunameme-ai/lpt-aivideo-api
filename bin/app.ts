@@ -20,7 +20,8 @@ new ApiStack(app, `VideoServiceAPIStack`, {
     ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!,
     discordChannel: process.env.DISCORD_WEBHOOK_PROD!,
     falAiEndpoint: process.env.FALAI_ENDPOINT!,
-    falAiApiKey: process.env.FALAI_APIKEY!
+    falAiApiKey: process.env.FALAI_APIKEY!,
+    privyAppId: process.env.PRIVY_APPID_PROD!
 })
 
 new ApiStack(app, 'VideoServiceDevAPIStack', {
@@ -32,7 +33,8 @@ new ApiStack(app, 'VideoServiceDevAPIStack', {
     ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!,
     discordChannel: process.env.DISCORD_WEBHOOK_DEV!,
     falAiEndpoint: process.env.FALAI_ENDPOINT!,
-    falAiApiKey: process.env.FALAI_APIKEY!
+    falAiApiKey: process.env.FALAI_APIKEY!,
+    privyAppId: process.env.PRIVY_APPID_DEV!
 });
 
 new ApiStack(app, 'LocalStack', {
@@ -44,5 +46,6 @@ new ApiStack(app, 'LocalStack', {
     ffmpegLambdaLayerArn: process.env.FFMPEG_LAMBDA_LAYER_ARN!,
     discordChannel: process.env.DISCORD_WEBHOOK_DEV!,
     falAiEndpoint: process.env.FALAI_ENDPOINT!,
-    falAiApiKey: process.env.FALAI_APIKEY!
+    falAiApiKey: process.env.FALAI_APIKEY!,
+    privyAppId: process.env.PRIVY_APPID_DEV!
 });

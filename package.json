@@ -38,6 +38,8 @@
     "dotenv": "^16.4.4",
     "fluent-ffmpeg": "github:fluent-ffmpeg/node-fluent-ffmpeg",
     "fs": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0",
     "short-unique-id": "^5.0.3"
   }
 }
