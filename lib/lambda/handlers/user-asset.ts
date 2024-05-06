@@ -15,9 +15,9 @@ const claim = async (ddbClient: DDBClient, userId: string, assetId: string, salt
     }
 }
 
-const publish = async (ddbClient: DDBClient, userId: string, assetId: string): Promise<APIGatewayProxyResult> => {
+const togglePublish = async (ddbClient: DDBClient, userId: string, assetId: string, publishOn: boolean): Promise<APIGatewayProxyResult> => {
     try {
-        await ddbClient.publish(userId, assetId)
+        await ddbClient.togglePublish(userId, assetId, publishOn)
         return composeResponse(200)
     }
     catch (e: any) {
@@ -54,7 +54,7 @@ export const userAssetHandler = async function (event: APIGatewayProxyEvent, con
     const authorizer = new JwtAuthorizer(process.env.PRIVY_APPID!, logger)
     const authResult = await authorizer.verify(accessToken)
     if (!authResult.isValid) {
-        return composeResponse(401, 'Invalid accessToken')
+        return composeResponse(403, 'Invalid accessToken')
     }
     const assetId = event.pathParameters?.proxy
     const userId = event.queryStringParameters?.user
@@ -62,7 +62,7 @@ export const userAssetHandler = async function (event: APIGatewayProxyEvent, con
         return composeResponse(400, `userId and assetId are required.`)
     }
     if (authResult.userId != userId) {
-        return composeResponse(401, 'Invalid accessToken')
+        return composeResponse(403, 'Invalid userId')
     }
     const ddbClient = new DDBClient({
         tableName: process.env.DDB_GENERATIONS_TABLENAME!,
@@ -78,7 +78,12 @@ export const userAssetHandler = async function (event: APIGatewayProxyEvent, con
     }
     else if (event.path.startsWith('/v1/publish')) {
         // GET /v1/publish/{proxy|asset}?user={user}
-        return await publish(ddbClient, userId, assetId)
+        if (event.httpMethod === 'GET') {
+            return await togglePublish(ddbClient, userId, assetId, true)
+        }
+        if (event.httpMethod === 'DELETE') {
+            return await togglePublish(ddbClient, userId, assetId, false)
+        }
     }
     return composeResponse(400, `${event.path} is not supported`)
 }

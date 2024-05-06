@@ -111,7 +111,9 @@ export class ApiStack extends cdk.Stack {
         v1Res.addResource('claim').addProxy({ anyMethod: false }).addMethod('GET', new apigw.LambdaIntegration(userAssetHandler))
 
         // v1/publish/{proxy+}
-        v1Res.addResource('publish').addProxy({ anyMethod: false }).addMethod('GET', new apigw.LambdaIntegration(userAssetHandler))
+        const publishRes = v1Res.addResource('publish').addProxy({ anyMethod: false })
+        publishRes.addMethod('GET', new apigw.LambdaIntegration(userAssetHandler))
+        publishRes.addMethod('DELETE', new apigw.LambdaIntegration(userAssetHandler))
 
 
         this.img2VidFuncUrl = img2vidHandler.addFunctionUrl({

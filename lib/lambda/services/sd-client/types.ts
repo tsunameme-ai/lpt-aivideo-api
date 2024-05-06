@@ -58,6 +58,7 @@ export interface GenerationItem {
     duration: number,
     outputs: Array<GenerationOutputItem>,
     userid?: string
+    visibility?: string
 }
 
 export interface GenerationsPage {

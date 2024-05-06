@@ -63,7 +63,8 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
             outputs: result.images,
             timestamp: timestamp,
             duration: new Date().getTime() - timestamp,
-            userid: input.user_id
+            userid: input.user_id,
+            visibility: 'community'
         })
         await shareOnDiscord(result.images[0].url, logger)
         return {

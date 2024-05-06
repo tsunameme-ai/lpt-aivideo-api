@@ -4,6 +4,7 @@ import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
 import { DynamoDB } from 'aws-sdk'
 import { ILogger } from '../metrics'
 import { GenerationItem, GenerationType, GenerationsPage } from '../sd-client/types'
+import { Result } from 'aws-cdk-lib/aws-stepfunctions'
 
 export interface LoggerDDBError {
     errInfo: DDBErrorInfo
@@ -32,10 +33,12 @@ export class DDBError extends Error {
 
 const GSI_ACTION_TIMESTAMP_INDEX = 'action-timestamp-index'
 const GSI_USERID_TIMESTAMP_INDEX = 'userid-timestamp-index'
+const GSI_VISIBILITY_TIMESTAMP_INDEX = 'visibility-timestamp-index'
 
 const GSI: { [key: string]: { partitionKey: string, partitionKeyType: AttributeType, sortKey: string, sortKeyType: AttributeType } } = {
     [GSI_ACTION_TIMESTAMP_INDEX]: { partitionKey: 'action', partitionKeyType: AttributeType.STRING, sortKey: 'timestamp', sortKeyType: AttributeType.NUMBER },
     [GSI_USERID_TIMESTAMP_INDEX]: { partitionKey: 'userid', partitionKeyType: AttributeType.STRING, sortKey: 'timestamp', sortKeyType: AttributeType.NUMBER },
+    [GSI_VISIBILITY_TIMESTAMP_INDEX]: { partitionKey: 'visibility', partitionKeyType: AttributeType.STRING, sortKey: 'timestamp', sortKeyType: AttributeType.NUMBER },
 }
 
 export class DDBClient {
@@ -273,7 +276,7 @@ export class DDBClient {
             //Let anyone takeover static
             if (record.userid && assetId != 'static') {
                 throw new DDBError(`${assetId} is not claimable.`, {
-                    status: 401,
+                    status: 403,
                     access: 'claim',
                 })
             }
@@ -302,7 +305,7 @@ export class DDBClient {
         }
     }
 
-    public async publish(userId: string, assetId: string) {
+    public async togglePublish(userId: string, assetId: string, publishOn: boolean) {
         try {
             const record = await this.readGeneration(assetId)
             if (!record) {
@@ -311,13 +314,20 @@ export class DDBClient {
                     access: 'readGeneration',
                 })
             }
-            // await this.ddb.update({
-            //     TableName: this.tableName,
-            //     Key: { id: assetId, timestamp: record.timestamp },
-            //     UpdateExpression: `SET userid = :userid`,
-            //     ExpressionAttributeValues: { 'userid': userId }
-            // }).promise()
-
+            if (record.userid != userId) {
+                throw new DDBError(`Not authorized to publish`, {
+                    status: 403,
+                    access: 'claim',
+                })
+            }
+            const result = await this.ddb.update({
+                TableName: this.tableName,
+                Key: { id: assetId, timestamp: record.timestamp },
+                UpdateExpression: `SET visibility = :newVisibility`,
+                ExpressionAttributeValues: { ':newVisibility': publishOn ? 'community' : 'none' }
+            }).promise()
+            console.log(result.Attributes)
+            // this.logger?.info(result)
         } catch (e: any) {
             const ddbError = new DDBError(e.message, {
                 status: e.status || e.info.status || 500,
