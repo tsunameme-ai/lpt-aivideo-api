@@ -25,7 +25,7 @@ new ApiStack(app, `VideoServiceAPIStack`, {
 })
 
 new ApiStack(app, 'VideoServiceDevAPIStack', {
-    apiName: 'VideoServiceDevAPI',
+    apiName: 'VideoServiceDevRestAPI',
     awsRegion: process.env.AWS_REGION!,
     awsAccount: process.env.AWS_ACCOUNT!,
     ddbGenerationsTableName: 'generations-dev1',

@@ -4,7 +4,6 @@ import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
 import { DynamoDB } from 'aws-sdk'
 import { ILogger } from '../metrics'
 import { GenerationItem, GenerationType, GenerationsPage } from '../sd-client/types'
-import { Result } from 'aws-cdk-lib/aws-stepfunctions'
 
 export interface LoggerDDBError {
     errInfo: DDBErrorInfo
@@ -186,10 +185,9 @@ export class DDBClient {
             }
             const result = await this.ddb.query({
                 TableName: this.tableName,
-                IndexName: GSI_ACTION_TIMESTAMP_INDEX,
-                KeyConditionExpression: '#action = :actionValue',
-                ExpressionAttributeNames: { '#action': 'action' },
-                ExpressionAttributeValues: { ":actionValue": generationType },
+                IndexName: GSI_VISIBILITY_TIMESTAMP_INDEX,
+                KeyConditionExpression: "visibility = :community",
+                ExpressionAttributeValues: { ":community": "community" },
                 ExclusiveStartKey: startKey,
                 ScanIndexForward: false,
                 Limit: limit ?? 12
@@ -324,7 +322,7 @@ export class DDBClient {
                 TableName: this.tableName,
                 Key: { id: assetId, timestamp: record.timestamp },
                 UpdateExpression: `SET visibility = :newVisibility`,
-                ExpressionAttributeValues: { ':newVisibility': publishOn ? 'community' : 'none' }
+                ExpressionAttributeValues: { ':newVisibility': publishOn ? 'community' : 'private' }
             }).promise()
             console.log(result.Attributes)
             // this.logger?.info(result)
