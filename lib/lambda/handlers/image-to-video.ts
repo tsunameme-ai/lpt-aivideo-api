@@ -51,7 +51,7 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
         const timestamp = new Date().getTime()
         const body = JSON.parse(event.body || '{}')
         const id = new ShortUniqueId({ length: 10 }).rnd()
-        const result = await sdClient.img2vid(id, body)
+        const result = await sdClient.img2vid(id, timestamp, body)
         const input = {
             ...body
         }

@@ -34,13 +34,14 @@ export class SDClient {
         this.ffmpegClient = new FFMPEGClient(this.logger)
     }
 
-    public async txt2img(id: string, params: Txt2imgInput): Promise<GenerationOutput> {
+    public async txt2img(id: string, timestamp: number, params: Txt2imgInput): Promise<GenerationOutput> {
         const timeoutMS = parseInt(process.env.LPT_TIMEOUTMS_TXT2IMG || '15000')
         let resError = undefined
         try {
             const output = await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' }, timeoutMS)
             return {
                 ...output,
+                timestamp,
                 id
             }
         }
@@ -66,7 +67,7 @@ export class SDClient {
         })
     }
 
-    public async img2img(id: string, params: Img2imgInput): Promise<GenerationOutput> {
+    public async img2img(id: string, timestamp: number, params: Img2imgInput): Promise<GenerationOutput> {
         const imageData = await this.downloadImageData(params.image_url)
         const fd = new FormData()
         fd.append('image', imageData)
@@ -81,7 +82,8 @@ export class SDClient {
         }
         const data = await this.sendRequest('/image-to-image', fd, undefined)
         return {
-            id: id,
+            id,
+            timestamp,
             images: data.images
         }
     }

@@ -178,7 +178,7 @@ export class DDBClient {
                 if (segs.length === 3) {
                     startKey = {
                         id: segs[0],
-                        action: segs[1],
+                        visibility: segs[1],
                         timestamp: parseInt(segs[2])
                     }
                 }
@@ -195,7 +195,7 @@ export class DDBClient {
 
             let nextPageKey = undefined
             if (result.LastEvaluatedKey) {
-                nextPageKey = `${result.LastEvaluatedKey.id}-${result.LastEvaluatedKey.action}-${result.LastEvaluatedKey.timestamp}`
+                nextPageKey = `${result.LastEvaluatedKey.id}-${result.LastEvaluatedKey.visibility}-${result.LastEvaluatedKey.timestamp}`
             }
             return {
                 'next-page': nextPageKey,

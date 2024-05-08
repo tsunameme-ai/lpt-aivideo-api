@@ -9,6 +9,8 @@
     "watch": "tsc -w",
     "test:unit": "jest test/unit",
     "test:debug": "jest test/unit/sd",
+    "test:integ": "jest test/integ",
+    "test:integDebug": "jest test/integ/generate.test.ts",
     "test": "jest",
     "cdk": "cdk"
   },

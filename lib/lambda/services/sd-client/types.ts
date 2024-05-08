@@ -6,7 +6,7 @@ export enum GenerationType {
     IMG2VID = 'img2vid'
 }
 export type GenerationOutputItem = { url: string, seed: number | string }
-export type GenerationOutput = { id: string, images: Array<GenerationOutputItem> }
+export type GenerationOutput = { id: string, timestamp: number, images: Array<GenerationOutputItem> }
 export type Txt2imgInput = {
     'model_id': string,
     'prompt': string,
