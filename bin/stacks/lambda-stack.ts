@@ -239,7 +239,6 @@ export class LambdaStack extends cdk.NestedStack {
                     ],
                 })
                 lambdaRole.attachInlinePolicy(ddbPolicyRW)
-                console.log(`???? props.privyAppId ${props.privyAppId}`)
                 return this.execBuildLambda({
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,

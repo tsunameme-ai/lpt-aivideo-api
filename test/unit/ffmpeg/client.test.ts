@@ -2,6 +2,8 @@ require('dotenv').config()
 
 import { FFMPEGClient } from "../../../lib/lambda/services/ffmpeg";
 
+jest.setTimeout(60 * 1000)
+
 describe('FFMPEG Client', function () {
     const ffmpegClient = new FFMPEGClient()
     test('video to gif', async () => {

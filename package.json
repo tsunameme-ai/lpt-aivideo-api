@@ -11,8 +11,9 @@
     "test:debug": "jest test/unit/sd",
     "test:integ": "jest test/integ",
     "test:integDebug": "jest test/integ/generate.test.ts",
-    "test": "jest",
-    "cdk": "cdk"
+    "deploy:local": "npm run build && npm run test:unit && cdk deploy LocalStack",
+    "deploy:dev": "npm run build && npm run test:unit && cdk deploy VideoServiceDevAPIStack",
+    "deploy:prod": "npm run build && npm run test:unit && cdk deploy VideoServiceAPIStack"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.133",

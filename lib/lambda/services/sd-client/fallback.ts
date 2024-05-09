@@ -44,39 +44,30 @@ export class FalAIClient {
         return width > 512 && height > 512 ? 'square_hd' : 'square'
     }
 
-    public async txt2img(id: string, params: Txt2imgInput, timeoutMS: number): Promise<GenerationOutput> {
+    public async txt2img(id: string, timestamp: number, params: Txt2imgInput, timeoutMS: number): Promise<GenerationOutput> {
         const size = this.lookupSize(params.width, params.height)
         const endpoint = this.lookUpModel(params.model_id)
-        const output = await this.sendRequest(endpoint, JSON.stringify({
+        return await this.sendRequest(id, timestamp, endpoint, JSON.stringify({
             "prompt": params.prompt,
             "image_size": size,
             "num_inference_steps": 8,
             "num_images": params.num_images_per_prompt,
             "seed": params.seed
         }), timeoutMS)
-        return {
-            ...output,
-            id
-        }
     }
 
-    public async img2vid(id: string, params: Img2vidInput, timeoutMS: number): Promise<GenerationOutput> {
+    public async img2vid(id: string, timestamp: number, params: Img2vidInput, timeoutMS: number): Promise<GenerationOutput> {
         const imgurl = fixTruncatedImageURL(params.image_url)
-        const output = await this.sendRequest('/fast-svd', {
+        return await this.sendRequest(id, timestamp, '/fast-svd', {
             image_url: imgurl,
             motion_bucket_id: params.motion_bucket_id,
             cond_aug: params.noise_aug_strength,
             fps: 6,
             seed: params.seed
         }, timeoutMS)
-        return {
-            ...output,
-            id
-        }
     }
 
-
-    private async sendRequest(path: string, body: any, timeoutMs: number = 30000): Promise<GenerationOutput> {
+    private async sendRequest(resId: string, resTimestamp: number, path: string, body: any, timeoutMs: number = 30000): Promise<GenerationOutput> {
         this.metric?.putMetrics({ keys: [`FALAIReq`, `FALAIReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
         const t = new Date().getTime()
         let resOutput = undefined
@@ -104,7 +95,7 @@ export class FalAIClient {
                     })
                 }
                 if (images && images.length > 0) {
-                    resOutput = { images, id: 'tmp' }
+                    resOutput = { images, id: resId, timestamp: resTimestamp }
                 }
                 else {
                     resError = new SDProviderError('No assets', {

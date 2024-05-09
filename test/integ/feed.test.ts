@@ -20,7 +20,8 @@ describe('test feeds', () => {
             expect(item.visibility).toEqual(`community`)
             expect(item.action).toEqual(`img2vid`)
         }
-        expect(typeof (data.nextPageKey)).toEqual(`string`)
+        expect(typeof (data['next-page'])).toEqual(`string`)
+        expect(data['next-page'].split('-')[1]).toEqual(`community`)
     })
     it(`user feed`, async () => {
         const url = `${process.env.TEST_API_ENDPOINT}/v1/usergens/${process.env.TEST_USERID}?limit=2`
@@ -31,6 +32,8 @@ describe('test feeds', () => {
             expect(item.userid).toEqual(process.env.TEST_USERID)
             expect(item.action).toEqual(`img2vid`)
         }
+        expect(typeof (data['next-page'])).toEqual(`string`)
+        expect(data['next-page'].split('-')[1]).toMatch(new RegExp('^did:privy:'))
     })
     it(`feed item`, async () => {
         const url = `${process.env.TEST_API_ENDPOINT}/v1/generation/static`

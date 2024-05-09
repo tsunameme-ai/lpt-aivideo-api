@@ -49,7 +49,7 @@ export class SDClient {
             resError = e
         }
         if (this.fallbackClient) {
-            return await this.fallbackClient?.txt2img(id, params, 30000 - timeoutMS)
+            return await this.fallbackClient?.txt2img(id, timestamp, params, 30000 - timeoutMS)
         }
         else {
             throw resError
@@ -88,10 +88,9 @@ export class SDClient {
         }
     }
 
-    public async img2vid(id: string, params: Img2vidInput): Promise<GenerationOutput> {
+    public async img2vid(id: string, timestamp: number, params: Img2vidInput): Promise<GenerationOutput> {
         let resError = undefined
         const imgurl = fixTruncatedImageURL(params.image_url)
-        console.log(`??? img2vid ${imgurl}`)
         const imageData = await this.downloadImageData(imgurl)
         const fd = new FormData()
         fd.append('image', imageData)
@@ -113,7 +112,7 @@ export class SDClient {
 
         }
         if (resError && this.fallbackClient) {
-            const data = await this.fallbackClient?.img2vid(id, params, 300000)
+            const data = await this.fallbackClient?.img2vid(id, timestamp, params, 300000)
             if (data.images.length > 0) {
                 output = data.images[0]
             }
@@ -121,7 +120,8 @@ export class SDClient {
         if (output) {
             output.url = await this.processVideo(id, params.width, output.url, params.output_type || 'gif', params.overlay_base64, params.output_width)
             return {
-                id: id,
+                id,
+                timestamp,
                 images: [output]
             }
         }

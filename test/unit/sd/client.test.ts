@@ -23,7 +23,7 @@ describe('SD Client', function () {
             }]
         })
 
-        const outputRes = await sdClient.txt2img('test_id', {
+        const outputRes = await sdClient.txt2img('test_id', 12345, {
             'model_id': 'model_id',
             'prompt': 'prompt',
             'negative_prompt': '',
@@ -40,7 +40,7 @@ describe('SD Client', function () {
         stubbedSendRequest.rejects(new Error("SD Provider Error"))
         let resError = undefined
         try {
-            await sdClient.txt2img('test_id', {
+            await sdClient.txt2img('test_id', 1234, {
                 'model_id': 'model_id',
                 'prompt': 'prompt',
                 'negative_prompt': '',
