@@ -82,24 +82,23 @@ export const showcaseHandler = async function (event: APIGatewayProxyEvent, cont
         logger: logger
     })
 
-    const segs = event.requestContext.routeKey!.split('/')
     const pageKey = event.queryStringParameters?.page
     const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters?.limit) : undefined
-    if (segs.includes('generations') && segs.includes('user')) {
-        //"GET /v1/user/{userId}/generations/"
-        return await requestVideosByUser(ddbClient, event.pathParameters?.userId, pageKey, limit)
-    }
-    if (segs.includes('generations')) {
+    if (event.path.startsWith('/v1/generations')) {
         //"GET /v1/generations"
         return await requestVideos(ddbClient, pageKey, limit)
     }
-    if (segs.includes('generation')) {
-        //"GET /v1/generation/{gid}"
-        return await requestGenerationItem(ddbClient, event.pathParameters?.generationId)
+    else if (event.path.startsWith('/v1/generation')) {
+        //"GET /v1/generation/{proxy+}"
+        return await requestGenerationItem(ddbClient, event.pathParameters?.proxy)
+    }
+    else if (event.path.startsWith('/v1/usergens')) {
+        //"GET /v1/usergens/{proxy+}"
+        return await requestVideosByUser(ddbClient, event.pathParameters?.proxy, pageKey, limit)
     }
     return {
         statusCode: 400,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ error: `${event.requestContext.routeKey} is not supported` })
+        body: JSON.stringify({ error: `${event.path} is not supported` })
     }
 }

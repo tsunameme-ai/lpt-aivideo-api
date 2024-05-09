@@ -6,7 +6,7 @@ export enum GenerationType {
     IMG2VID = 'img2vid'
 }
 export type GenerationOutputItem = { url: string, seed: number | string }
-export type GenerationOutput = { id: string, images: Array<GenerationOutputItem> }
+export type GenerationOutput = { id: string, timestamp: number, images: Array<GenerationOutputItem> }
 export type Txt2imgInput = {
     'model_id': string,
     'prompt': string,
@@ -45,7 +45,8 @@ export type Img2vidInput = {
     image_generation_id?: string
     output_type?: VideoExtension
     output_width?: number
-    'user_id': string
+    'user_id': string,
+    salt?: string
 }
 type DDBImg2vidInput = Omit<Img2vidInput, 'overlay_base64'>
 
@@ -57,6 +58,7 @@ export interface GenerationItem {
     duration: number,
     outputs: Array<GenerationOutputItem>,
     userid?: string
+    visibility?: string
 }
 
 export interface GenerationsPage {

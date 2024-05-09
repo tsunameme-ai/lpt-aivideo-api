@@ -12,7 +12,7 @@ export interface LoggerDDBError {
 
 export interface DDBErrorInfo {
     status: number,
-    access: 'query' | 'scan' | 'batchwrite',
+    access: string,
     filter?: { [key: string]: string }
 }
 
@@ -32,13 +32,30 @@ export class DDBError extends Error {
 
 const GSI_ACTION_TIMESTAMP_INDEX = 'action-timestamp-index'
 const GSI_USERID_TIMESTAMP_INDEX = 'userid-timestamp-index'
+const GSI_VISIBILITY_TIMESTAMP_INDEX = 'visibility-timestamp-index'
 
 const GSI: { [key: string]: { partitionKey: string, partitionKeyType: AttributeType, sortKey: string, sortKeyType: AttributeType } } = {
     [GSI_ACTION_TIMESTAMP_INDEX]: { partitionKey: 'action', partitionKeyType: AttributeType.STRING, sortKey: 'timestamp', sortKeyType: AttributeType.NUMBER },
     [GSI_USERID_TIMESTAMP_INDEX]: { partitionKey: 'userid', partitionKeyType: AttributeType.STRING, sortKey: 'timestamp', sortKeyType: AttributeType.NUMBER },
+    [GSI_VISIBILITY_TIMESTAMP_INDEX]: { partitionKey: 'visibility', partitionKeyType: AttributeType.STRING, sortKey: 'timestamp', sortKeyType: AttributeType.NUMBER },
 }
 
 export class DDBClient {
+    public static async createTableIfNotExist(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
+        const ddb = new DynamoDB()
+
+        try {
+            const response = await ddb.describeTable({ TableName: tableName }).promise()
+            if (response.Table) {
+                return
+            }
+        }
+        catch (e: any) {
+
+        }
+        this.createTable(scope, tableName, type)
+    }
+
     public static createTable(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
         if (type === 'generations') {
             const indexesToCreate = { ...GSI }
@@ -113,7 +130,7 @@ export class DDBClient {
         catch (e: any) {
             const ddbError = new DDBError(e.message, {
                 status: 500,
-                access: 'batchwrite',
+                access: 'saveGeneration',
             })
             ddbError.stack = e.stack
             this.logger?.error(ddbError?.formatForLogger())
@@ -134,7 +151,7 @@ export class DDBClient {
             }
             ddbError = new DDBError(`No result`, {
                 status: 404,
-                access: 'query',
+                access: 'readGeneration',
                 filter: { id: id }
             })
             throw ddbError
@@ -142,7 +159,7 @@ export class DDBClient {
         catch (e: any) {
             ddbError = new DDBError(e.message, {
                 status: 500,
-                access: 'query',
+                access: 'readGeneration',
                 filter: { id: id }
             })
             ddbError.stack = e.stack
@@ -161,17 +178,16 @@ export class DDBClient {
                 if (segs.length === 3) {
                     startKey = {
                         id: segs[0],
-                        action: segs[1],
+                        visibility: segs[1],
                         timestamp: parseInt(segs[2])
                     }
                 }
             }
             const result = await this.ddb.query({
                 TableName: this.tableName,
-                IndexName: GSI_ACTION_TIMESTAMP_INDEX,
-                KeyConditionExpression: '#action = :actionValue',
-                ExpressionAttributeNames: { '#action': 'action' },
-                ExpressionAttributeValues: { ":actionValue": generationType },
+                IndexName: GSI_VISIBILITY_TIMESTAMP_INDEX,
+                KeyConditionExpression: "visibility = :community",
+                ExpressionAttributeValues: { ":community": "community" },
                 ExclusiveStartKey: startKey,
                 ScanIndexForward: false,
                 Limit: limit ?? 12
@@ -179,7 +195,7 @@ export class DDBClient {
 
             let nextPageKey = undefined
             if (result.LastEvaluatedKey) {
-                nextPageKey = `${result.LastEvaluatedKey.id}-${result.LastEvaluatedKey.action}-${result.LastEvaluatedKey.timestamp}`
+                nextPageKey = `${result.LastEvaluatedKey.id}-${result.LastEvaluatedKey.visibility}-${result.LastEvaluatedKey.timestamp}`
             }
             return {
                 'next-page': nextPageKey,
@@ -189,7 +205,7 @@ export class DDBClient {
         catch (e: any) {
             const ddbError = new DDBError(e.message, {
                 status: 500,
-                access: 'query',
+                access: 'readGenerations',
                 filter: { type: generationType }
             })
             ddbError.stack = e.stack
@@ -234,12 +250,92 @@ export class DDBClient {
         catch (e: any) {
             const ddbError = new DDBError(e.message, {
                 status: 500,
-                access: 'query',
+                access: 'readVideosByUser',
                 filter: { type: userid }
             })
             ddbError.stack = e.stack
             this.logger?.error(ddbError?.formatForLogger())
             throw ddbError
         }
+    }
+
+    public async claim(userId: string, assetId: string, salt: string) {
+        try {
+            const record = await this.readGeneration(assetId)
+            if (!record) {
+                throw new DDBError(`${assetId} is not found.`, {
+                    status: 404,
+                    access: 'claim',
+                })
+            }
+            if (record.userid === userId) {
+                return
+            }
+            //Let anyone takeover static
+            if (record.userid && assetId != 'static') {
+                throw new DDBError(`${assetId} is not claimable.`, {
+                    status: 403,
+                    access: 'claim',
+                })
+            }
+            // if ((record.input as any).salt != salt) {
+            //     throw new DDBError(`${assetId} salt doesn't match ${(record.input as any).salt} vs ${salt}`, {
+            //         status: 401,
+            //         access: 'claim',
+            //     })
+            // }
+            await this.ddb.update({
+                TableName: this.tableName,
+                Key: { id: assetId, timestamp: record.timestamp },
+                UpdateExpression: `SET userid = :userid`,
+                ExpressionAttributeValues: { ':userid': userId }
+            }).promise()
+
+        } catch (e: any) {
+            const ddbError = new DDBError(e.message, {
+                status: e.status || e.info.status || 500,
+                access: 'claim',
+                filter: { userId, assetId }
+            })
+            ddbError.stack = e.stack
+            this.logger?.error(ddbError?.formatForLogger())
+            throw ddbError
+        }
+    }
+
+    public async togglePublish(userId: string, assetId: string, publishOn: boolean) {
+        try {
+            const record = await this.readGeneration(assetId)
+            if (!record) {
+                throw new DDBError(`${assetId} is not found.`, {
+                    status: 404,
+                    access: 'readGeneration',
+                })
+            }
+            if (record.userid != userId) {
+                throw new DDBError(`Not authorized to publish`, {
+                    status: 403,
+                    access: 'claim',
+                })
+            }
+            const result = await this.ddb.update({
+                TableName: this.tableName,
+                Key: { id: assetId, timestamp: record.timestamp },
+                UpdateExpression: `SET visibility = :newVisibility`,
+                ExpressionAttributeValues: { ':newVisibility': publishOn ? 'community' : 'private' }
+            }).promise()
+            console.log(result.Attributes)
+            // this.logger?.info(result)
+        } catch (e: any) {
+            const ddbError = new DDBError(e.message, {
+                status: e.status || e.info.status || 500,
+                access: 'claim',
+                filter: { userId, assetId }
+            })
+            ddbError.stack = e.stack
+            this.logger?.error(ddbError?.formatForLogger())
+            throw ddbError
+        }
+
     }
 }

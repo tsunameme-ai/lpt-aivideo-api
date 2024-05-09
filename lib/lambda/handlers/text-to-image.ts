@@ -37,7 +37,7 @@ export const textToImageHandler = async function (event: APIGatewayProxyEvent, c
         const timestamp = new Date().getTime()
         const body = JSON.parse(event.body || '{}')
         const id = new ShortUniqueId({ length: 10 }).rnd()
-        const result = await sdClient.txt2img(id, body)
+        const result = await sdClient.txt2img(id, timestamp, body)
         if (body.width > 100 && body.height > 100) {
             await ddbClient.saveGeneration({
                 id: id,
