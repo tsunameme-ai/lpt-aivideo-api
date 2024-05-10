@@ -63,7 +63,7 @@ const imageToVideo = async (event: APIGatewayProxyEvent, logger?: ILogger): Prom
     })
 }
 
-export const asyncGenRequestHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
+export const asyncRequestHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
     const metric = new AWSMetricsLogger(StackType.LAMBDA)
     const logger: Logger = bunyan.createLogger({
         name: 'asyncGenRequestHandler',

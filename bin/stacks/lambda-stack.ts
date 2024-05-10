@@ -10,7 +10,7 @@ import {
 export enum LambdaType {
     undefined,
     ASYNC_GENERATE = 'ASYNC_GENERATE',
-    ASYNC_GEN_REQUEST = 'ASYNC_GEN_REQUEST',
+    ASYNC_REQUEST = 'ASYNC_REQUEST',
     TXT2IMG = 'TXT2IMG',
     IMG2VID = 'IMG2VID',
     SHOWCASE = 'SHOWCASE',

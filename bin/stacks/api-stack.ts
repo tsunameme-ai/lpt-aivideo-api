@@ -56,10 +56,10 @@ export class ApiStack extends cdk.Stack {
             lambdaName: 'AsyncGenerateLambda',
             type: LambdaType.ASYNC_GENERATE,
         })
-        const { lambda: asycnGenRequestLambda } = new LambdaStack(this, 'AsyncGenRequestLambdaStack', {
+        const { lambda: asycnRequestLambda } = new LambdaStack(this, 'AsyncRequestLambdaStack', {
             ...baseLambdaProps,
-            lambdaName: 'AsyncGenRequestLambda',
-            type: LambdaType.ASYNC_GEN_REQUEST,
+            lambdaName: 'AsyncRequestLambda',
+            type: LambdaType.ASYNC_REQUEST,
             asyncGenerateLambdaFuncName: asycnGenerateLambda.functionName
         })
 
@@ -94,7 +94,7 @@ export class ApiStack extends cdk.Stack {
         const v1Res = this.api.root.addResource('v1')
 
         // /v1/async/image-to-video
-        v1Res.addResource('async').addResource('image-to-video').addMethod('POST', new apigw.LambdaIntegration(asycnGenRequestLambda))
+        v1Res.addResource('async').addResource('image-to-video').addMethod('POST', new apigw.LambdaIntegration(asycnRequestLambda))
 
         // v1/generations
         v1Res.addResource('generations').addMethod('GET', new apigw.LambdaIntegration(showcaseHandler))
