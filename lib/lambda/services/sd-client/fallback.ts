@@ -70,7 +70,7 @@ export class FalAIClient {
     private async sendRequest(resId: string, resTimestamp: number, path: string, body: any, timeoutMs: number = 30000): Promise<GenerationOutput> {
         this.metric?.putMetrics({ keys: [`FALAIReq`, `FALAIReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
         const t = new Date().getTime()
-        let resOutput = undefined
+        let resOutput: GenerationOutput | undefined = undefined
         let resError: SDProviderError | undefined = undefined
 
         try {
@@ -95,7 +95,7 @@ export class FalAIClient {
                     })
                 }
                 if (images && images.length > 0) {
-                    resOutput = { images, id: resId, timestamp: resTimestamp }
+                    resOutput = { images, id: resId, timestamp: resTimestamp, status: 'success' }
                 }
                 else {
                     resError = new SDProviderError('No assets', {

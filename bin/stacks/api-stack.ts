@@ -2,7 +2,7 @@ import * as apigw from 'aws-cdk-lib/aws-apigateway'
 import * as cdk from 'aws-cdk-lib'
 import * as aws_lambda from "aws-cdk-lib/aws-lambda";
 import { Construct } from 'constructs'
-import { LambdaStack, LambdaType } from './lambda-stack';
+import { LambdaStack, LambdaStackProps, LambdaType } from './lambda-stack';
 import { DDBClient } from '../../lib/lambda/services/ddb-client';
 
 export interface APIStackProps extends cdk.StackProps {
@@ -32,71 +32,69 @@ export class ApiStack extends cdk.Stack {
             }
         });
 
-        //FFMPEG
-        const { lambda: iovHandler } = new LambdaStack(this, 'FFMPEGLambdaStack', {
-            lambdaName: 'FFMPEGLambda',
-            awsRegion: props.awsRegion,
-            awsAccount: props.awsAccount,
-            type: LambdaType.FFMPEG,
-            ffmpegLambdaLayerArn: props.ffmpegLambdaLayerArn
-        })
-        this.api.root.addResource('image-over-video').addMethod('POST', new apigw.LambdaIntegration(iovHandler))
-
-        //GENERATION
+        //GENERATION tables
         DDBClient.createTableIfNotExist(this, props.ddbGenerationsTableName, 'generations')
 
-        const { lambda: txt2imgHandler } = new LambdaStack(this, 'Txt2ImgLambdaStack', {
-            lambdaName: 'Txt2ImgLambda',
+        const baseLambdaProps: LambdaStackProps = {
+            lambdaName: '',
+            type: LambdaType.undefined,
             awsRegion: props.awsRegion,
             awsAccount: props.awsAccount,
-            type: LambdaType.TXT2IMG,
-            ddbGenerationsTableName: props.ddbGenerationsTableName,
-            sdProviderEndpoint: props.sdProviderEndpoint,
-            discordChannel: props.discordChannel,
-            falAiEndpoint: props.falAiEndpoint,
-            falAiApiKey: props.falAiApiKey,
-            privyAppId: props.privyAppId
-        })
-
-        const { lambda: img2vidHandler } = new LambdaStack(this, 'Img2VidLambdaStack', {
-            lambdaName: 'Img2VidLambda',
-            awsRegion: props.awsRegion,
-            awsAccount: props.awsAccount,
-            type: LambdaType.IMG2VID,
             ddbGenerationsTableName: props.ddbGenerationsTableName,
             ffmpegLambdaLayerArn: props.ffmpegLambdaLayerArn,
             sdProviderEndpoint: props.sdProviderEndpoint,
             discordChannel: props.discordChannel,
             falAiEndpoint: props.falAiEndpoint,
             falAiApiKey: props.falAiApiKey,
-            privyAppId: props.privyAppId
+            privyAppId: props.privyAppId,
+            asyncGenerateLambdaFuncName: ''
+        }
+
+        //LAMBDAs
+        const { lambda: asycnGenerateLambda } = new LambdaStack(this, 'AsyncGenerateLambdaStack', {
+            ...baseLambdaProps,
+            lambdaName: 'AsyncGenerateLambda',
+            type: LambdaType.ASYNC_GENERATE,
+        })
+        const { lambda: asycnGenRequestLambda } = new LambdaStack(this, 'AsyncGenRequestLambdaStack', {
+            ...baseLambdaProps,
+            lambdaName: 'AsyncGenRequestLambda',
+            type: LambdaType.ASYNC_GEN_REQUEST,
+            asyncGenerateLambdaFuncName: asycnGenerateLambda.functionName
+        })
+
+        const { lambda: txt2imgHandler } = new LambdaStack(this, 'Txt2ImgLambdaStack', {
+            ...baseLambdaProps,
+            lambdaName: 'Txt2ImgLambda',
+            type: LambdaType.TXT2IMG,
+        })
+
+        const { lambda: img2vidHandler } = new LambdaStack(this, 'Img2VidLambdaStack', {
+            ...baseLambdaProps,
+            lambdaName: 'Img2VidLambda',
+            type: LambdaType.IMG2VID,
         })
 
 
         const { lambda: showcaseHandler } = new LambdaStack(this, 'ShowcaseLambdaStack', {
+            ...baseLambdaProps,
             lambdaName: 'ShowcaseLambda',
-            awsRegion: props.awsRegion,
-            awsAccount: props.awsAccount,
             type: LambdaType.SHOWCASE,
-            ddbGenerationsTableName: props.ddbGenerationsTableName,
-            discordChannel: props.discordChannel,
-            privyAppId: props.privyAppId
         })
 
         const { lambda: userAssetHandler } = new LambdaStack(this, 'UserAssetLambdaStack', {
+            ...baseLambdaProps,
             lambdaName: 'UserAssetLambda',
-            awsRegion: props.awsRegion,
-            awsAccount: props.awsAccount,
             type: LambdaType.USERASSET,
-            ddbGenerationsTableName: props.ddbGenerationsTableName,
-            discordChannel: props.discordChannel,
-            privyAppId: props.privyAppId
         })
 
         this.api.root.addResource('text-to-image').addMethod('POST', new apigw.LambdaIntegration(txt2imgHandler))
         this.api.root.addResource('image-to-video').addMethod('POST', new apigw.LambdaIntegration(img2vidHandler))
 
         const v1Res = this.api.root.addResource('v1')
+
+        // /v1/async/image-to-video
+        v1Res.addResource('async').addResource('image-to-video').addMethod('POST', new apigw.LambdaIntegration(asycnGenRequestLambda))
 
         // v1/generations
         v1Res.addResource('generations').addMethod('GET', new apigw.LambdaIntegration(showcaseHandler))

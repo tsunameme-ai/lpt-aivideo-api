@@ -1,70 +1,39 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
 import { default as bunyan, default as Logger } from 'bunyan'
 import { DDBClient } from "../services/ddb-client";
+import { composeApiResponse } from "../utils/apigateway";
 
 const requestGenerationItem = async (ddbClient: DDBClient, id?: string): Promise<APIGatewayProxyResult> => {
     if (!id) {
-        return {
-            statusCode: 404,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 'error': `id is required.` })
-        }
+        return composeApiResponse(400, { 'error': `id is required.` })
     }
     try {
         const result = await ddbClient.readGeneration(id)
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(result)
-        }
+        return composeApiResponse(200, result)
     }
     catch (e: any) {
-        return {
-            statusCode: e.status || e.info.status || 500,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 'error': `${e.message}` })
-        }
+        return composeApiResponse(e.status || e.info.status || 500, { 'error': `${e.message}` })
     }
 }
 const requestVideos = async (ddbClient: DDBClient, pageKey?: string, limit?: number): Promise<APIGatewayProxyResult> => {
     try {
         const result = await ddbClient.readVideos(pageKey, limit)
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(result)
-        }
+        return composeApiResponse(200, result)
     }
     catch (e: any) {
-        return {
-            statusCode: e.status || e.info.status || 500,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 'error': `${e.message}` })
-        }
+        return composeApiResponse(e.status || e.info.status || 500, { 'error': `${e.message}` })
     }
 }
 const requestVideosByUser = async (ddbClient: DDBClient, userId?: string, pageKey?: string, limit?: number): Promise<APIGatewayProxyResult> => {
     if (!userId) {
-        return {
-            statusCode: 404,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 'error': `UserId is required.` })
-        }
+        return composeApiResponse(404, { 'error': `UserId is required.` })
     }
     try {
         const result = await ddbClient.readVideosByUser(userId, pageKey, limit)
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(result)
-        }
+        return composeApiResponse(200, result)
     }
     catch (e: any) {
-        return {
-            statusCode: e.status || e.info.status || 500,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 'error': `${e.message}` })
-        }
+        return composeApiResponse(e.status || e.info.status || 500, { 'error': `${e.message}` })
     }
 }
 
@@ -96,9 +65,5 @@ export const showcaseHandler = async function (event: APIGatewayProxyEvent, cont
         //"GET /v1/usergens/{proxy+}"
         return await requestVideosByUser(ddbClient, event.pathParameters?.proxy, pageKey, limit)
     }
-    return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ error: `${event.path} is not supported` })
-    }
+    return composeApiResponse(400, { error: `${event.path} is not supported` })
 }

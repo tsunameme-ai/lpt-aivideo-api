@@ -84,6 +84,7 @@ export class SDClient {
         return {
             id,
             timestamp,
+            status: 'success',
             images: data.images
         }
     }
@@ -122,6 +123,7 @@ export class SDClient {
             return {
                 id,
                 timestamp,
+                status: 'success',
                 images: [output]
             }
         }

@@ -53,19 +53,4 @@ describe('test generation', () => {
 
         await CleanupUtils.deleteVidGen(process.env.TEST_DDBTABLE!, data)
     })
-    // it(`user feed`, async () => {
-    //     const url = `${process.env.TEST_API_ENDPOINT}/v1/usergens/${process.env.TEST_USERID}?limit=2`
-    //     const { data, status } = await AxiosUtils.call('GET', url)
-    //     expect(status).toEqual(200)
-    //     expect(data.items.length).toEqual(2)
-    //     for (let item of data.items) {
-    //         expect(item.userid).toEqual(process.env.TEST_USERID)
-    //         expect(item.action).toEqual(`img2vid`)
-    //     }
-    // })
-    // it(`feed item`, async () => {
-    //     const url = `${process.env.TEST_API_ENDPOINT}/v1/generation/static`
-    //     const { status } = await AxiosUtils.call('GET', url)
-    //     expect(status).toEqual(200)
-    // })
 })

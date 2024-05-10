@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda
 import { default as bunyan, default as Logger } from 'bunyan'
 import { DDBClient } from "../services/ddb-client";
 import { JwtAuthorizer } from "../services/auth/jwt";
+import { composeApiResponse } from "../utils/apigateway";
 
 
 const claim = async (ddbClient: DDBClient, userId: string, assetId: string, salt: string): Promise<APIGatewayProxyResult> => {
@@ -26,17 +27,9 @@ const togglePublish = async (ddbClient: DDBClient, userId: string, assetId: stri
 }
 const composeResponse = (status: number, error?: string): APIGatewayProxyResult => {
     if (status === 200) {
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ success: true })
-        }
+        return composeApiResponse(200, { success: true })
     }
-    return {
-        statusCode: status,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ success: false, error })
-    }
+    return composeApiResponse(status, { success: false, error })
 }
 
 export const userAssetHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
