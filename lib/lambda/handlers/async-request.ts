@@ -34,16 +34,12 @@ const imageToVideo = async (event: APIGatewayProxyEvent, logger?: ILogger): Prom
     const timestamp = new Date().getTime()
     const input = JSON.parse(event.body || '{}')
     const id = new ShortUniqueId({ length: 10 }).rnd()
-    console.log(`??? invokeAsyncProcessor`)
     const result = await invokeAsyncProcessor({
         genpath: 'image-to-video',
         id,
         timestamp,
         input
     })
-    console.log(`??? lambda invoke result`)
-    console.log(result)
-
     delete input.overlay_base64
     await ddbClient.saveGeneration({
         id: id,
@@ -73,10 +69,8 @@ export const asyncRequestHandler = async function (event: APIGatewayProxyEvent, 
     logger.info(event)
 
     if (event.path === '/v1/async/image-to-video') {
-        console.log(`??? asyncRect i2v`)
         //POST /v1/async/image-to-video
         try {
-            console.log(`??? asyncRect i2v response`)
             return await imageToVideo(event)
         }
         catch (e: any) {

@@ -31,6 +31,7 @@ describe('test generation', () => {
         expect(data.images.length).toEqual(1)
         expect(typeof (data.images[0].url)).toEqual(`string`)
         expect(typeof (data.images[0].seed)).toEqual(`number`)
+        await CleanupUtils.deleteVidGen(process.env.TEST_DDBTABLE!, data)
     })
     it(`i2v`, async () => {
         const url = `${process.env.TEST_API_I2V_ENDPOINT}`

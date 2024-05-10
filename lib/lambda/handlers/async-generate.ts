@@ -55,10 +55,7 @@ export const asyncGenerateHandler = async function (event: AsyncGenerateEventInf
         logger: logger
     })
     try {
-        console.log(`??? asyncGenerateHandler sd gen `)
         const result = await sdClient.img2vid(event.id, event.timestamp, event.input)
-        console.log(`??? asyncGenerateHandler sd gen result `)
-        console.log(result)
         const input = event.input
         delete input.overlay_base64
         await ddbClient.saveGeneration({
@@ -71,7 +68,6 @@ export const asyncGenerateHandler = async function (event: AsyncGenerateEventInf
             userid: input.user_id,
             visibility: 'community'
         })
-        console.log(`??? asyncGenerateHandler sd gen `)
         await shareOnDiscord(result.images[0].url, logger)
     }
     catch (e: any) {
