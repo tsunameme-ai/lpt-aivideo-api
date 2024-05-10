@@ -184,7 +184,7 @@ export class LambdaStack extends cdk.NestedStack {
                     ]
                 })
             }
-            case LambdaType.ASYNC_GEN_REQUEST: {
+            case LambdaType.ASYNC_REQUEST: {
                 const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
                     assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
                     managedPolicies: [
@@ -199,10 +199,8 @@ export class LambdaStack extends cdk.NestedStack {
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,
                     timeout: cdk.Duration.seconds(29),
-                    handlerName: 'asyncGenRequestHandler',
+                    handlerName: 'asyncRequestHandler',
                     env: {
-                        FFMPEG_PATH: '/opt/bin/ffmpeg',
-                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint,
                         DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName,
                         ASYNC_GENERATE_LAMBDA: props.asyncGenerateLambdaFuncName
                     },

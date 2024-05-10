@@ -52,8 +52,7 @@ const imageToVideo = async (event: APIGatewayProxyEvent, logger?: ILogger): Prom
         outputs: [],
         timestamp: timestamp,
         duration: new Date().getTime() - timestamp,
-        userid: input.user_id,
-        visibility: 'community'
+        userid: input.user_id
     })
     return composeApiResponse(200, {
         id: id,
@@ -66,7 +65,7 @@ const imageToVideo = async (event: APIGatewayProxyEvent, logger?: ILogger): Prom
 export const asyncRequestHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
     const metric = new AWSMetricsLogger(StackType.LAMBDA)
     const logger: Logger = bunyan.createLogger({
-        name: 'asyncGenRequestHandler',
+        name: 'asyncRequestHandler',
         serializers: bunyan.stdSerializers,
         level: bunyan.INFO,
         requestId: context.awsRequestId
@@ -74,9 +73,11 @@ export const asyncRequestHandler = async function (event: APIGatewayProxyEvent, 
     logger.info(event)
 
     if (event.path === '/v1/async/image-to-video') {
+        console.log(`??? asyncRect i2v`)
         //POST /v1/async/image-to-video
         try {
-            await imageToVideo(event)
+            console.log(`??? asyncRect i2v response`)
+            return await imageToVideo(event)
         }
         catch (e: any) {
             return composeApiResponse(e.status || e.info.status || 500, { error: e.message })

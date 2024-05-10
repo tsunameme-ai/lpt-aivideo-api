@@ -1,21 +1,34 @@
 import { Context } from "aws-lambda"
 import bunyan from "bunyan"
-import { AWSMetricsLogger, StackType } from "../services/metrics"
+import { AWSMetricsLogger, ILogger, StackType } from "../services/metrics"
 import Logger from "bunyan"
 import { SDClient } from "../services/sd-client"
 import { FalAIClient } from "../services/sd-client/fallback"
 import { DDBClient } from "../services/ddb-client"
-import { GenerationType } from "../services/sd-client/types"
+import { GenerationType, Img2vidInput } from "../services/sd-client/types"
+import axios from "axios"
 
+const shareOnDiscord = async (url: string, logger: ILogger) => {
+    if (process.env.DISCORD_WEBHOOK) {
+        try {
+            const res = await axios.post(process.env.DISCORD_WEBHOOK, { content: url });
+            if (![200, 201, 204].includes(res.status)) {
+                logger.error(`Discord fail ${res.status}`)
+            }
+        }
+        catch (e) {
+            logger.error(e)
+        }
+    }
+}
 export type AsyncGenerateEventInfo = {
     id: string,
     timestamp: number,
     genpath: 'image-to-video'
-    input: any
+    input: Img2vidInput
 
 }
 export const asyncGenerateHandler = async function (event: AsyncGenerateEventInfo, context: Context): Promise<void> {
-    console.log(`??? asyncGenerateHandler triggered `)
     const metric = new AWSMetricsLogger(StackType.LAMBDA)
     const logger: Logger = bunyan.createLogger({
         name: 'asyncGenerateHandler',
@@ -42,22 +55,24 @@ export const asyncGenerateHandler = async function (event: AsyncGenerateEventInf
         logger: logger
     })
     try {
-        const timestamp = new Date().getTime()
-        const body = JSON.parse(event.input || '{}')
-        const result = await sdClient.img2vid(body.id, timestamp, body)
+        console.log(`??? asyncGenerateHandler sd gen `)
+        const result = await sdClient.img2vid(event.id, event.timestamp, event.input)
+        console.log(`??? asyncGenerateHandler sd gen result `)
+        console.log(result)
         const input = event.input
         delete input.overlay_base64
         await ddbClient.saveGeneration({
-            id: event.input,
+            id: event.id,
             action: GenerationType.IMG2VID,
             input,
             outputs: result.images,
-            timestamp: timestamp,
-            duration: new Date().getTime() - timestamp,
+            timestamp: event.timestamp,
+            duration: new Date().getTime() - event.timestamp,
             userid: input.user_id,
             visibility: 'community'
         })
-        // await shareOnDiscord(result.images[0].url, logger)
+        console.log(`??? asyncGenerateHandler sd gen `)
+        await shareOnDiscord(result.images[0].url, logger)
     }
     catch (e: any) {
         logger.error(e)

@@ -1,4 +1,5 @@
 import axiosStatic from 'axios'
+import axiosRetry from 'axios-retry';
 
 export default class AxiosUtils {
     static buildAxiosOption(method: string, url: string, body?: any, headers?: Record<string, string>) {
@@ -26,4 +27,9 @@ export default class AxiosUtils {
             status,
         }
     }
+
+    public static delay(ms: number) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
 }
