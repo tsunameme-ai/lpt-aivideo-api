@@ -10,7 +10,7 @@
     "test:unit": "jest test/unit",
     "test:debug": "jest test/unit/sd",
     "test:integ": "jest test/integ",
-    "test:integ-debug": "jest test/integ/generate.test.ts --detectOpenHandles",
+    "test:integ-debug": "jest test/integ/generate.test.ts",
     "deploy:local": "npm run build && cdk deploy LocalStack",
     "deploy:dev": "npm run build && npm run test:unit && cdk deploy VideoServiceDevAPIStack",
     "deploy:prod": "npm run build && npm run test:unit && cdk deploy VideoServiceAPIStack"
