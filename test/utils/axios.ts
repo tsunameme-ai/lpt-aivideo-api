@@ -1,5 +1,4 @@
 import axiosStatic from 'axios'
-import axiosRetry from 'axios-retry';
 
 export default class AxiosUtils {
     static buildAxiosOption(method: string, url: string, body?: any, headers?: Record<string, string>) {

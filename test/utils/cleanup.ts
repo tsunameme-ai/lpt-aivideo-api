@@ -20,15 +20,28 @@ export default class CleanupUtils {
         --key '${JSON.stringify(key)}'`
         const ps = [this.cmd(deleteCmd)]
         for (let img of data.images) {
-            // https://lpt-aivideo-dst.s3.amazonaws.com/fgbFS5lIcd.gif
-            if (img.url.startsWith(`https://lpt-aivideo-dst.s3.amazonaws.com`)) {
-                const path = img.url.split('https://')[1]
-                const bucketName = path.split('.s3.amazonaws.com/')[0]
-                const segs = path.split('/')
-                const objKey = segs[segs.length - 1]
-                ps.push(this.cmd(`aws s3 rm s3://${bucketName}/${objKey}`))
+            const cmdstr = this.s3UrlToCMD(img.url)
+            if (cmdstr) {
+                ps.push(this.cmd(cmdstr))
             }
         }
         await Promise.all(ps)
+    }
+    public static async deleteS3Gen(url: string) {
+        const cmdstr = this.s3UrlToCMD(url)
+        if (cmdstr) {
+            await this.cmd(cmdstr)
+        }
+    }
+    private static s3UrlToCMD(url: string): string | undefined {
+        // https://lpt-aivideo-dst.s3.amazonaws.com/fgbFS5lIcd.gif
+        if (url.startsWith(`https://lpt-aivideo-dst.s3.amazonaws.com`)) {
+            const path = url.split('https://')[1]
+            const bucketName = path.split('.s3.amazonaws.com/')[0]
+            const segs = path.split('/')
+            const objKey = segs[segs.length - 1]
+            return `aws s3 rm s3://${bucketName}/${objKey}`
+        }
+        return undefined
     }
 }

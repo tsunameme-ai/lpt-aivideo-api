@@ -113,6 +113,9 @@ export class ApiStack extends cdk.Stack {
         publishRes.addMethod('GET', new apigw.LambdaIntegration(userAssetHandler))
         publishRes.addMethod('DELETE', new apigw.LambdaIntegration(userAssetHandler))
 
+        // v1/upload/image
+        v1Res.addResource('upload').addResource('image').addMethod('POST', new apigw.LambdaIntegration(userAssetHandler))
+
 
         this.img2VidFuncUrl = img2vidHandler.addFunctionUrl({
             authType: aws_lambda.FunctionUrlAuthType.NONE,

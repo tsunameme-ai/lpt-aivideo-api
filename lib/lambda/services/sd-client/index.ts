@@ -7,6 +7,7 @@ import { GenerationOutput, GenerationOutputItem, Img2imgInput, Img2vidInput, SDP
 import { FalAIClient } from './fallback'
 import { VideoExtension, VideoProcessingOperation, VideoProcessingParams } from '../ffmpeg/types'
 import { fixTruncatedImageURL } from './utils'
+import { parseBase64Image } from '../../utils/processor'
 
 
 interface SDClientProps {
@@ -185,8 +186,7 @@ export class SDClient {
         const ops: VideoProcessingOperation[] = []
         if (imgBase64Str && imgBase64Str.length > 0) {
             ops.push(VideoProcessingOperation.OVERLAY_IMAGE)
-            const imgData = Buffer.from(imgBase64Str.replace(/^data:image\/\w+;base64,/, ""), 'base64');
-            const imgType = imgBase64Str.split(';')[0].split('/')[1];
+            const { data: imgData, type: imgType } = parseBase64Image(imgBase64Str)
             ps.push(this.s3Client.upload({
                 Bucket: this.s3BucketSrc, Key: `${videoId}.png`, Body: imgData,
                 ContentEncoding: 'base64',

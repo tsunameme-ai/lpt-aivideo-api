@@ -237,6 +237,7 @@ export class LambdaStack extends cdk.NestedStack {
                     managedPolicies: [
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
                     ],
                 })
                 lambdaRole.attachInlinePolicy(ddbPolicyRW)
