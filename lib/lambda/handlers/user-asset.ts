@@ -53,7 +53,7 @@ const uploadImage = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxy
         const { data: imgData, type: imgType } = parseBase64Image(imgBase64Str)
         const destUrl = await s3Client.upload({
             Bucket: 'lpt-aivideo-dst', Key: `tsunameme-${id}.png`, Body: imgData,
-            ContentEncoding: 'base64',
+            // ContentEncoding: 'base64',
             ContentType: `image/${imgType}`
         })
         return composeApiResponse(200, { url: destUrl })
