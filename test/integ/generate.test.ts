@@ -23,7 +23,8 @@ describe('test generation', () => {
             "guidance_scale": 7,
             "width": 64,
             "height": 64,
-            "num_images_per_prompt": 1
+            "num_images_per_prompt": 1,
+            "num_inference_steps": 2
         }
         const { data, status } = await AxiosUtils.call('POST', url, body, { 'Content-Type': 'application/json' })
         expect(status).toEqual(200)

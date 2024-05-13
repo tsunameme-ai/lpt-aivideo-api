@@ -6,21 +6,8 @@ import { SDClient } from "../services/sd-client"
 import { FalAIClient } from "../services/sd-client/fallback"
 import { DDBClient } from "../services/ddb-client"
 import { GenerationType, Img2vidInput } from "../services/sd-client/types"
-import axios from "axios"
+import { shareOnDiscord } from "../utils/processor"
 
-const shareOnDiscord = async (url: string, logger: ILogger) => {
-    if (process.env.DISCORD_WEBHOOK) {
-        try {
-            const res = await axios.post(process.env.DISCORD_WEBHOOK, { content: url });
-            if (![200, 201, 204].includes(res.status)) {
-                logger.error(`Discord fail ${res.status}`)
-            }
-        }
-        catch (e) {
-            logger.error(e)
-        }
-    }
-}
 export type AsyncGenerateEventInfo = {
     id: string,
     timestamp: number,

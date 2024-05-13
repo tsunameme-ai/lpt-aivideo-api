@@ -22,6 +22,7 @@ export type Txt2imgInput = {
     'width': number,
     'height': number,
     'num_images_per_prompt': number
+    'num_inference_steps': number
     'user_id': string
 }
 
