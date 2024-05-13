@@ -20,10 +20,11 @@ export default class AxiosUtils {
         const axios = axiosStatic.create()
 
         const option = AxiosUtils.buildAxiosOption(method, url, body, headers)
-        const { data, status } = await axios(option)
-        return {
-            data,
-            status,
-        }
+        return axios(option)
     }
+
+    public static delay(ms: number) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
 }

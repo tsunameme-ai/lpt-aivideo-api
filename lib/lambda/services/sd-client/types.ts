@@ -3,10 +3,16 @@ import { VideoExtension } from "../ffmpeg/types"
 export enum GenerationType {
     TXT2IMG = 'txt2img',
     IMG2IMG = 'img2img',
-    IMG2VID = 'img2vid'
+    IMG2VID = 'img2vid',
+    IMG2VID_PENDING = 'img2vid-pending'
 }
 export type GenerationOutputItem = { url: string, seed: number | string }
-export type GenerationOutput = { id: string, timestamp: number, images: Array<GenerationOutputItem> }
+export type GenerationOutput = {
+    id: string,
+    timestamp: number,
+    status: 'pending' | 'success' | 'failed'
+    images: Array<GenerationOutputItem>
+}
 export type Txt2imgInput = {
     'model_id': string,
     'prompt': string,
@@ -16,6 +22,7 @@ export type Txt2imgInput = {
     'width': number,
     'height': number,
     'num_images_per_prompt': number
+    'num_inference_steps': number
     'user_id': string
 }
 

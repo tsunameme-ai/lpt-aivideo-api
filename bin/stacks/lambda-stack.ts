@@ -8,7 +8,9 @@ import {
 } from "aws-cdk-lib";
 
 export enum LambdaType {
-    FFMPEG = 'FFMPEG',
+    undefined,
+    ASYNC_GENERATE = 'ASYNC_GENERATE',
+    ASYNC_REQUEST = 'ASYNC_REQUEST',
     TXT2IMG = 'TXT2IMG',
     IMG2VID = 'IMG2VID',
     SHOWCASE = 'SHOWCASE',
@@ -20,13 +22,14 @@ export interface LambdaStackProps extends cdk.StackProps {
     type: LambdaType,
     awsRegion: string,
     awsAccount: string,
-    ddbGenerationsTableName?: string,
-    sdProviderEndpoint?: string,
-    ffmpegLambdaLayerArn?: string
-    discordChannel?: string
-    falAiEndpoint?: string
-    falAiApiKey?: string
-    privyAppId?: string
+    ddbGenerationsTableName: string,
+    sdProviderEndpoint: string,
+    ffmpegLambdaLayerArn: string
+    discordChannel: string
+    falAiEndpoint: string
+    falAiApiKey: string
+    privyAppId: string
+    asyncGenerateLambdaFuncName: string
 }
 
 export class LambdaStack extends cdk.NestedStack {
@@ -127,31 +130,6 @@ export class LambdaStack extends cdk.NestedStack {
     }
     private buildLambda(props: LambdaStackProps, ddbPolicyR: aws_iam.Policy, ddbPolicyRW: aws_iam.Policy): aws_lambda_nodejs.NodejsFunction {
         switch (props.type) {
-            case LambdaType.FFMPEG: {
-                const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
-                    assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
-                    managedPolicies: [
-                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
-                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
-                    ],
-                })
-                if (!props.ffmpegLambdaLayerArn) {
-                    throw new Error(`ffmpegLambdaLayerArn is required`)
-                }
-                return this.execBuildLambda({
-                    lambdaName: props.lambdaName,
-                    lambdaRole: lambdaRole,
-                    timeout: cdk.Duration.seconds(600),
-                    handlerName: 'imageOverVideoHandler',
-                    env: {
-                        FFMPEG_PATH: '/opt/bin/ffmpeg',
-                    },
-                    layers: [
-                        aws_lambda.LayerVersion.fromLayerVersionArn(this, 'ffmpeg-layer', props.ffmpegLambdaLayerArn!),
-                    ]
-                })
-            }
             case LambdaType.TXT2IMG: {
                 const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
                     assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -164,23 +142,20 @@ export class LambdaStack extends cdk.NestedStack {
                 return this.execBuildLambda({
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,
-                    timeout: cdk.Duration.seconds(30),
+                    timeout: cdk.Duration.seconds(29),
                     handlerName: 'textToImageHandler',
                     env: {
-                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,
-                        DISCORD_WEBHOOK: props.discordChannel!,
-                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!,
-                        FALAI_ENDPOINT: props.falAiEndpoint!,
-                        FALAI_APIKEY: props.falAiApiKey!,
+                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint,
+                        DISCORD_WEBHOOK: props.discordChannel,
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName,
+                        FALAI_ENDPOINT: props.falAiEndpoint,
+                        FALAI_APIKEY: props.falAiApiKey,
                         LPT_TIMEOUTMS_TXT2IMG: '20000'
                     }
                 })
             }
+            case LambdaType.ASYNC_GENERATE:
             case LambdaType.IMG2VID: {
-                if (!props.ffmpegLambdaLayerArn) {
-                    throw new Error(`ffmpegLambdaLayerArn is required`)
-                }
-
                 const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
                     assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
                     managedPolicies: [
@@ -195,19 +170,45 @@ export class LambdaStack extends cdk.NestedStack {
                     lambdaName: props.lambdaName,
                     lambdaRole: lambdaRole,
                     timeout: cdk.Duration.seconds(600),
-                    handlerName: 'imageToVideoHandler',
+                    handlerName: props.type === LambdaType.IMG2VID ? 'imageToVideoHandler' : 'asyncGenerateHandler',
                     env: {
                         FFMPEG_PATH: '/opt/bin/ffmpeg',
-                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint!,
-                        DISCORD_WEBHOOK: props.discordChannel!,
-                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!,
-                        FALAI_ENDPOINT: props.falAiEndpoint!,
-                        FALAI_APIKEY: props.falAiApiKey!
+                        SDPROVIDER_ENDPOINT: props.sdProviderEndpoint,
+                        DISCORD_WEBHOOK: props.discordChannel,
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName,
+                        FALAI_ENDPOINT: props.falAiEndpoint,
+                        FALAI_APIKEY: props.falAiApiKey
                     },
                     layers: [
-                        aws_lambda.LayerVersion.fromLayerVersionArn(this, 'ffmpeg-layer', props.ffmpegLambdaLayerArn!),
+                        aws_lambda.LayerVersion.fromLayerVersionArn(this, 'ffmpeg-layer', props.ffmpegLambdaLayerArn),
                     ]
                 })
+            }
+            case LambdaType.ASYNC_REQUEST: {
+                const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
+                    assumedBy: new aws_iam.ServicePrincipal('lambda.amazonaws.com'),
+                    managedPolicies: [
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
+                    ],
+                })
+                lambdaRole.attachInlinePolicy(ddbPolicyRW)
+
+                return this.execBuildLambda({
+                    lambdaName: props.lambdaName,
+                    lambdaRole: lambdaRole,
+                    timeout: cdk.Duration.seconds(29),
+                    handlerName: 'asyncRequestHandler',
+                    env: {
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName,
+                        ASYNC_GENERATE_LAMBDA: props.asyncGenerateLambdaFuncName
+                    },
+                    layers: [
+                        aws_lambda.LayerVersion.fromLayerVersionArn(this, 'ffmpeg-layer', props.ffmpegLambdaLayerArn),
+                    ]
+                })
+
             }
             case LambdaType.SHOWCASE: {
                 const lambdaRole = new aws_iam.Role(this, `${props.lambdaName}-Role`, {
@@ -224,8 +225,8 @@ export class LambdaStack extends cdk.NestedStack {
                     timeout: cdk.Duration.seconds(29),
                     handlerName: 'showcaseHandler',
                     env: {
-                        DISCORD_WEBHOOK: props.discordChannel!,
-                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!
+                        DISCORD_WEBHOOK: props.discordChannel,
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName
                     }
                 })
 
@@ -236,6 +237,7 @@ export class LambdaStack extends cdk.NestedStack {
                     managedPolicies: [
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
                         aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
+                        aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
                     ],
                 })
                 lambdaRole.attachInlinePolicy(ddbPolicyRW)
@@ -245,8 +247,8 @@ export class LambdaStack extends cdk.NestedStack {
                     timeout: cdk.Duration.seconds(29),
                     handlerName: 'userAssetHandler',
                     env: {
-                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName!,
-                        PRIVY_APPID: props.privyAppId!
+                        DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName,
+                        PRIVY_APPID: props.privyAppId
                     }
                 })
 

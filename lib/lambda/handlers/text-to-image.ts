@@ -6,6 +6,7 @@ import { DDBClient } from "../services/ddb-client";
 import ShortUniqueId from "short-unique-id";
 import { GenerationType } from "../services/sd-client/types";
 import { FalAIClient } from "../services/sd-client/fallback";
+import { composeApiResponse } from "../utils/apigateway";
 
 
 export const textToImageHandler = async function (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
@@ -48,19 +49,11 @@ export const textToImageHandler = async function (event: APIGatewayProxyEvent, c
                 duration: new Date().getTime() - timestamp
             })
         }
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(result)
-        }
+        return composeApiResponse(200, result)
     }
     catch (e: any) {
         logger.error(e)
-        return {
-            statusCode: e.status || e.info.status || 500,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ error: e.message })
-        }
+        return composeApiResponse(e?.status || e?.info?.status || 500, { error: e.message })
     }
     finally {
         await metric.flush()
