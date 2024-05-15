@@ -31,6 +31,7 @@ describe('SD Client', function () {
             'width': 512,
             'height': 512,
             'num_images_per_prompt': 1,
+            'num_inference_steps': 1,
             'user_id': 'userid'
         })
         expect(outputRes.id).toEqual('test_id')
@@ -48,7 +49,8 @@ describe('SD Client', function () {
                 'width': 512,
                 'height': 512,
                 'num_images_per_prompt': 1,
-                'user_id': 'userid'
+                'user_id': 'userid',
+                'num_inference_steps': 1,
             })
         } catch (e: any) {
             resError = e

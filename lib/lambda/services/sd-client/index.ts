@@ -86,7 +86,13 @@ export class SDClient {
             id,
             timestamp,
             status: 'success',
-            images: data.images
+            images: data.images.map(item => {
+                return {
+                    url: item.url,
+                    seed: item.seed,
+                    nsfw: item.nsfw || false
+                }
+            })
         }
     }
 
@@ -116,7 +122,11 @@ export class SDClient {
         if (resError && this.fallbackClient) {
             const data = await this.fallbackClient?.img2vid(id, timestamp, params, 300000)
             if (data.images.length > 0) {
-                output = data.images[0]
+                output = {
+                    url: data.images[0].url,
+                    seed: data.images[0].seed,
+                    nsfw: data.images[0].nsfw || false,
+                }
             }
         }
         if (output) {

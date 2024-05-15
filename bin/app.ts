@@ -12,7 +12,7 @@ for (let key of requiredKeys) {
     }
 }
 new ApiStack(app, `VideoServiceAPIStack`, {
-    apiName: 'VideoServiceAPI',
+    apiName: 'VideoServiceRestAPI',
     awsRegion: process.env.AWS_REGION!,
     awsAccount: process.env.AWS_ACCOUNT!,
     sdProviderEndpoint: process.env.SDPROVIDER_ENDPOINT!,

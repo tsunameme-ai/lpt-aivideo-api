@@ -6,7 +6,7 @@ export enum GenerationType {
     IMG2VID = 'img2vid',
     IMG2VID_PENDING = 'img2vid-pending'
 }
-export type GenerationOutputItem = { url: string, seed: number | string }
+export type GenerationOutputItem = { url: string, seed: number | string, nsfw: boolean }
 export type GenerationOutput = {
     id: string,
     timestamp: number,

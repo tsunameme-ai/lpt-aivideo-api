@@ -84,7 +84,7 @@ export class FalAIClient {
             if (data) {
                 let images: GenerationOutputItem[] = []
                 if (data.video) {
-                    images = [{ url: data.video.url, seed: data.seed }]
+                    images = [{ url: data.video.url, seed: data.seed, nsfw: false }]
                 }
                 else if (data.images) {
                     images = data.images.map((item: { url: string, width: number, height: number, content_type: string }) => {

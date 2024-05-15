@@ -44,6 +44,7 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
             ...body
         }
         delete input.overlay_base64
+        const nsfw = result.images[0].nsfw
         await ddbClient.saveGeneration({
             id: id,
             action: GenerationType.IMG2VID,
@@ -52,9 +53,11 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
             timestamp: timestamp,
             duration: new Date().getTime() - timestamp,
             userid: input.user_id,
-            visibility: 'community'
+            visibility: nsfw ? 'private' : 'community'
         })
-        await shareOnDiscord(result.images[0].url, logger)
+        if (!nsfw) {
+            await shareOnDiscord(result.images[0].url, logger)
+        }
         return composeApiResponse(200, result)
     }
     catch (e: any) {
