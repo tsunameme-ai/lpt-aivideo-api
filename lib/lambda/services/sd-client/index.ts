@@ -39,11 +39,11 @@ export class SDClient {
         const timeoutMS = parseInt(process.env.LPT_TIMEOUTMS_TXT2IMG || '15000')
         let resError = undefined
         try {
-            const output = await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' }, timeoutMS)
-            return {
-                ...output,
-                timestamp,
-                id
+            if (params.num_images_per_prompt > 1 && ['SG161222/RealVisXL_V4.0_Lightning', 'SG161222/RealVisXL_V4.0'].includes(params.model_id)) {
+                return await this.txt2imgMultiRequest(id, timestamp, params, timeoutMS)
+            }
+            else {
+                return await this.txt2imgSingleRequest(id, timestamp, params, timeoutMS)
             }
         }
         catch (e) {
@@ -54,6 +54,32 @@ export class SDClient {
         }
         else {
             throw resError
+        }
+    }
+    private async txt2imgSingleRequest(id: string, timestamp: number, params: Txt2imgInput, timeoutMS: number): Promise<GenerationOutput> {
+        const output = await this.sendRequest('/text-to-image', JSON.stringify(params), { 'Content-Type': 'application/json' }, timeoutMS)
+        return {
+            ...output,
+            status: 'success',
+            timestamp,
+            id
+        }
+
+    }
+    private async txt2imgMultiRequest(id: string, timestamp: number, params: Txt2imgInput, timeoutMS: number): Promise<GenerationOutput> {
+        const ps = []
+        for (let i = 0; i < params.num_images_per_prompt; i++) {
+            ps.push(this.txt2imgSingleRequest(id, timestamp, { ...params, num_images_per_prompt: 1 }, timeoutMS))
+        }
+        const outputs = await Promise.all(ps)
+        return {
+            id,
+            timestamp,
+            status: 'success',
+            images: outputs.map((item: GenerationOutput) => {
+                return item.images[0]
+            })
+
         }
     }
 
