@@ -205,7 +205,7 @@ export class SDClient {
             const dur = new Date().getTime() - t
             if (resError) {
                 this.metric?.putMetrics({ keys: [`LPTError`, `LPTError:${path}:${resError.info.status}`], value: 1, unit: MetricLoggerUnit.Count })
-                this.logger?.error(resError.formatForLogger())
+                this.logger?.error(resError.toLogger())
                 throw resError
             }
             else {

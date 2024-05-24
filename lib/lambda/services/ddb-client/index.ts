@@ -25,7 +25,7 @@ export class DDBError extends Error {
         this.info = info
     }
 
-    public formatForLogger(): LoggerDDBError {
+    public toLogger(): LoggerDDBError {
         return { errInfo: this.info, err: this }
     }
 }
@@ -56,54 +56,42 @@ export class DDBClient {
         this.createTable(scope, tableName, type)
     }
 
-    public static createTable(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
-        if (type === 'generations') {
-            const indexesToCreate = { ...GSI }
-            const table = new cdk.aws_dynamodb.Table(scope, tableName, {
-                tableName: tableName,
-                partitionKey: { name: 'id', type: AttributeType.STRING },
-                sortKey: { name: 'timestamp', type: AttributeType.NUMBER },
-                pointInTimeRecovery: true,
-                billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                removalPolicy: cdk.RemovalPolicy.RETAIN,
+    public static createTable(scope: Construct, tableName: string) {
+        const indexesToCreate = { ...GSI }
+        const table = new cdk.aws_dynamodb.Table(scope, tableName, {
+            tableName: tableName,
+            partitionKey: { name: 'id', type: AttributeType.STRING },
+            sortKey: { name: 'timestamp', type: AttributeType.NUMBER },
+            pointInTimeRecovery: true,
+            billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+            removalPolicy: cdk.RemovalPolicy.RETAIN,
+        })
+        const ddb = new DynamoDB()
+        ddb.describeTable({ TableName: tableName }, (_, data: DynamoDB.Types.DescribeTableOutput) => {
+            const indexes = data?.Table?.GlobalSecondaryIndexes || []
+            const indexNames = indexes.map(item => {
+                return item.IndexName
             })
-            const ddb = new DynamoDB()
-            ddb.describeTable({ TableName: tableName }, (_, data: DynamoDB.Types.DescribeTableOutput) => {
-                const indexes = data?.Table?.GlobalSecondaryIndexes || []
-                const indexNames = indexes.map(item => {
-                    return item.IndexName
-                })
-                const keys = Object.keys(indexesToCreate)
-                for (let key of keys) {
-                    if (indexNames.includes(key)) {
-                        delete indexesToCreate[key]
-                    }
-                }
-            })
-            const ins = Object.keys(indexesToCreate)
-            console.log(`indexes to create ${ins}`)
-            if (ins.length > 0) {
-                for (let iname of ins) {
-                    const itc = indexesToCreate[iname]
-                    table.addGlobalSecondaryIndex({
-                        indexName: iname,
-                        partitionKey: { name: itc.partitionKey, type: itc.partitionKeyType },
-                        sortKey: { name: itc.sortKey, type: itc.sortKeyType }
-                    })
+            const keys = Object.keys(indexesToCreate)
+            for (let key of keys) {
+                if (indexNames.includes(key)) {
+                    delete indexesToCreate[key]
                 }
             }
-            return table
+        })
+        const ins = Object.keys(indexesToCreate)
+        console.log(`indexes to create ${ins}`)
+        if (ins.length > 0) {
+            for (let iname of ins) {
+                const itc = indexesToCreate[iname]
+                table.addGlobalSecondaryIndex({
+                    indexName: iname,
+                    partitionKey: { name: itc.partitionKey, type: itc.partitionKeyType },
+                    sortKey: { name: itc.sortKey, type: itc.sortKeyType }
+                })
+            }
         }
-        else {
-            return new cdk.aws_dynamodb.Table(scope, tableName, {
-                tableName: tableName,
-                partitionKey: { name: 'id', type: AttributeType.STRING },
-                sortKey: { name: 'timestamp', type: AttributeType.NUMBER },
-                pointInTimeRecovery: true,
-                billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                removalPolicy: cdk.RemovalPolicy.RETAIN,
-            })
-        }
+        return table
     }
     private tableName: string
     private logger?: ILogger
@@ -133,7 +121,7 @@ export class DDBClient {
                 access: 'saveGeneration',
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
     }
@@ -163,7 +151,7 @@ export class DDBClient {
                 filter: { id: id }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
     }
@@ -209,7 +197,7 @@ export class DDBClient {
                 filter: { type: generationType }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
     }
@@ -254,7 +242,7 @@ export class DDBClient {
                 filter: { type: userid }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
     }
@@ -298,7 +286,7 @@ export class DDBClient {
                 filter: { userId, assetId }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
     }
@@ -333,7 +321,7 @@ export class DDBClient {
                 filter: { userId, assetId }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
 

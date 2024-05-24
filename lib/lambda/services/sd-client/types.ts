@@ -94,7 +94,7 @@ export class SDProviderError extends Error {
         this.info = info
     }
 
-    public formatForLogger(): LoggerSDProviderError {
+    public toLogger(): LoggerSDProviderError {
         return { errInfo: this.info, err: this }
     }
 }
