@@ -53,7 +53,7 @@ export class DDBClient {
         catch (e: any) {
 
         }
-        this.createTable(scope, tableName, type)
+        this.createTable(scope, tableName)
     }
 
     public static createTable(scope: Construct, tableName: string) {
