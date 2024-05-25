@@ -90,7 +90,7 @@ export class FalAIClient {
                     images = data.images.map((item: { url: string, width: number, height: number, content_type: string }) => {
                         return {
                             url: item.url,
-                            seed: data.seed
+                            seed: data.seed.toString()
                         }
                     })
                 }

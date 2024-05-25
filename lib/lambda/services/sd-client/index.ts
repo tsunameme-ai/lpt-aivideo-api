@@ -115,7 +115,7 @@ export class SDClient {
             images: data.images.map(item => {
                 return {
                     url: item.url,
-                    seed: item.seed,
+                    seed: item.seed.toString(),
                     nsfw: item.nsfw || false
                 }
             })
@@ -150,7 +150,7 @@ export class SDClient {
             if (data.images.length > 0) {
                 output = {
                     url: data.images[0].url,
-                    seed: data.images[0].seed,
+                    seed: data.images[0].seed.toString(),
                     nsfw: data.images[0].nsfw || false,
                 }
             }

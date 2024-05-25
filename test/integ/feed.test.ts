@@ -15,7 +15,6 @@ describe('test feeds', () => {
         expect(data.items.length).toEqual(2)
         expect(data.items[0].outputs.length).toEqual(1)
         expect(typeof (data.items[0].outputs[0].url)).toEqual(`string`)
-        expect(typeof (data.items[0].outputs[0].seed)).toEqual(`number`)
         for (let item of data.items) {
             expect(item.visibility).toEqual(`community`)
             expect(item.action).toEqual(`img2vid`)

@@ -33,7 +33,7 @@ export class ApiStack extends cdk.Stack {
         });
 
         //GENERATION tables
-        DDBClient.createTableIfNotExist(this, props.ddbGenerationsTableName, 'generations')
+        DDBClient.createTableIfNotExist(this, props.ddbGenerationsTableName)
 
         const baseLambdaProps: LambdaStackProps = {
             lambdaName: '',
