@@ -4,19 +4,19 @@ import { default as bunyan, default as Logger } from 'bunyan'
 import ShortUniqueId from "short-unique-id";
 import { DDBClient } from "../services/ddb-client";
 import { GenerationType } from "../services/sd-client/types";
-import { Lambda } from 'aws-sdk'
+import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 import { composeApiResponse } from "../utils/apigateway";
 import { AsyncGenerateEventInfo } from "./async-generate";
 
 const invokeAsyncProcessor = (event: AsyncGenerateEventInfo) => {
-    const lambda = new Lambda()
-    const lambdaParams = {
+    const lambda = new LambdaClient()
+    const command = new InvokeCommand({
         FunctionName: process.env.ASYNC_GENERATE_LAMBDA!,
         InvocationType: 'Event',
-        Payload: JSON.stringify(event),
-    }
+        Payload: JSON.stringify(event)
+    });
     return new Promise((resolve, reject) => {
-        lambda.invoke(lambdaParams, (err, data) => {
+        lambda.send(command, (err, data) => {
             if (err) {
                 reject(err)
             } else {
@@ -34,7 +34,7 @@ const imageToVideo = async (event: APIGatewayProxyEvent, logger?: ILogger): Prom
     const timestamp = new Date().getTime()
     const input = JSON.parse(event.body || '{}')
     const id = new ShortUniqueId({ length: 10 }).rnd()
-    const result = await invokeAsyncProcessor({
+    await invokeAsyncProcessor({
         genpath: 'image-to-video',
         id,
         timestamp,

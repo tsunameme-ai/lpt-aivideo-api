@@ -1,7 +1,8 @@
 import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb'
-import { DynamoDB } from 'aws-sdk'
+import { DynamoDBDocument, NativeAttributeValue } from '@aws-sdk/lib-dynamodb';
+import { DescribeTableCommandOutput, DynamoDB } from '@aws-sdk/client-dynamodb';
 import { ILogger } from '../metrics'
 import { GenerationItem, GenerationType, GenerationsPage } from '../sd-client/types'
 
@@ -25,7 +26,7 @@ export class DDBError extends Error {
         this.info = info
     }
 
-    public formatForLogger(): LoggerDDBError {
+    public toLogger(): LoggerDDBError {
         return { errInfo: this.info, err: this }
     }
 }
@@ -41,11 +42,11 @@ const GSI: { [key: string]: { partitionKey: string, partitionKeyType: AttributeT
 }
 
 export class DDBClient {
-    public static async createTableIfNotExist(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
+    public static async createTableIfNotExist(scope: Construct, tableName: string) {
         const ddb = new DynamoDB()
 
         try {
-            const response = await ddb.describeTable({ TableName: tableName }).promise()
+            const response = await ddb.describeTable({ TableName: tableName })
             if (response.Table) {
                 return
             }
@@ -53,61 +54,49 @@ export class DDBClient {
         catch (e: any) {
 
         }
-        this.createTable(scope, tableName, type)
+        this.createTable(scope, tableName)
     }
 
-    public static createTable(scope: Construct, tableName: string, type: 'pending-requests' | 'generations') {
-        if (type === 'generations') {
-            const indexesToCreate = { ...GSI }
-            const table = new cdk.aws_dynamodb.Table(scope, tableName, {
-                tableName: tableName,
-                partitionKey: { name: 'id', type: AttributeType.STRING },
-                sortKey: { name: 'timestamp', type: AttributeType.NUMBER },
-                pointInTimeRecovery: true,
-                billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                removalPolicy: cdk.RemovalPolicy.RETAIN,
+    public static createTable(scope: Construct, tableName: string) {
+        const indexesToCreate = { ...GSI }
+        const table = new cdk.aws_dynamodb.Table(scope, tableName, {
+            tableName: tableName,
+            partitionKey: { name: 'id', type: AttributeType.STRING },
+            sortKey: { name: 'timestamp', type: AttributeType.NUMBER },
+            pointInTimeRecovery: true,
+            billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+            removalPolicy: cdk.RemovalPolicy.RETAIN,
+        })
+        const ddb = new DynamoDB()
+        ddb.describeTable({ TableName: tableName }, (_, data?: DescribeTableCommandOutput) => {
+            const indexes = data?.Table?.GlobalSecondaryIndexes || []
+            const indexNames = indexes.map(item => {
+                return item.IndexName
             })
-            const ddb = new DynamoDB()
-            ddb.describeTable({ TableName: tableName }, (_, data: DynamoDB.Types.DescribeTableOutput) => {
-                const indexes = data?.Table?.GlobalSecondaryIndexes || []
-                const indexNames = indexes.map(item => {
-                    return item.IndexName
-                })
-                const keys = Object.keys(indexesToCreate)
-                for (let key of keys) {
-                    if (indexNames.includes(key)) {
-                        delete indexesToCreate[key]
-                    }
-                }
-            })
-            const ins = Object.keys(indexesToCreate)
-            console.log(`indexes to create ${ins}`)
-            if (ins.length > 0) {
-                for (let iname of ins) {
-                    const itc = indexesToCreate[iname]
-                    table.addGlobalSecondaryIndex({
-                        indexName: iname,
-                        partitionKey: { name: itc.partitionKey, type: itc.partitionKeyType },
-                        sortKey: { name: itc.sortKey, type: itc.sortKeyType }
-                    })
+            const keys = Object.keys(indexesToCreate)
+            for (let key of keys) {
+                if (indexNames.includes(key)) {
+                    delete indexesToCreate[key]
                 }
             }
-            return table
+        })
+        const ins = Object.keys(indexesToCreate)
+        console.log(`indexes to create ${ins}`)
+        if (ins.length > 0) {
+            for (let iname of ins) {
+                const itc = indexesToCreate[iname]
+                table.addGlobalSecondaryIndex({
+                    indexName: iname,
+                    partitionKey: { name: itc.partitionKey, type: itc.partitionKeyType },
+                    sortKey: { name: itc.sortKey, type: itc.sortKeyType }
+                })
+            }
         }
-        else {
-            return new cdk.aws_dynamodb.Table(scope, tableName, {
-                tableName: tableName,
-                partitionKey: { name: 'id', type: AttributeType.STRING },
-                sortKey: { name: 'timestamp', type: AttributeType.NUMBER },
-                pointInTimeRecovery: true,
-                billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                removalPolicy: cdk.RemovalPolicy.RETAIN,
-            })
-        }
+        return table
     }
     private tableName: string
     private logger?: ILogger
-    private ddb = new DynamoDB.DocumentClient()
+    private ddb = DynamoDBDocument.from(new DynamoDB())
     constructor(props: { tableName: string, logger?: ILogger }) {
         this.tableName = props.tableName
         this.logger = props.logger
@@ -125,7 +114,7 @@ export class DDBClient {
             },
         }
         try {
-            return await this.ddb.batchWrite(req).promise()
+            return await this.ddb.batchWrite(req);
         }
         catch (e: any) {
             const ddbError = new DDBError(e.message, {
@@ -133,7 +122,8 @@ export class DDBClient {
                 access: 'saveGeneration',
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
+            this.logger?.info(putReqs)
             throw ddbError
         }
     }
@@ -144,10 +134,11 @@ export class DDBClient {
                 TableName: this.tableName,
                 KeyConditionExpression: "id = :id",
                 ExpressionAttributeValues: { ":id": id }
-            }).promise()
+            })
+            const items = this.formatGenerationItems(result.Items ?? [])
 
-            if (result.Items && result.Items.length > 0) {
-                return result.Items[0] as GenerationItem
+            if (items && items.length > 0) {
+                return items[0]
             }
             ddbError = new DDBError(`No result`, {
                 status: 404,
@@ -163,7 +154,7 @@ export class DDBClient {
                 filter: { id: id }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
     }
@@ -191,7 +182,7 @@ export class DDBClient {
                 ExclusiveStartKey: startKey,
                 ScanIndexForward: false,
                 Limit: limit ?? 12
-            }).promise()
+            })
 
             let nextPageKey = undefined
             if (result.LastEvaluatedKey) {
@@ -199,7 +190,7 @@ export class DDBClient {
             }
             return {
                 'next-page': nextPageKey,
-                items: result.Items ?? []
+                items: this.formatGenerationItems(result.Items ?? [])
             } as GenerationsPage
         }
         catch (e: any) {
@@ -209,9 +200,23 @@ export class DDBClient {
                 filter: { type: generationType }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
+    }
+    private formatGenerationItems(items: Record<string, NativeAttributeValue>[]): GenerationItem[] {
+        return items.map(item => {
+            return {
+                ...item,
+                outputs: item.outputs.map((output: any) => {
+                    return {
+                        ...output,
+                        seed: output.seed.toString()
+                    }
+                })
+            } as GenerationItem
+        })
+
     }
     public async readVideosByUser(userid: string, pageKey?: string, limit?: number): Promise<GenerationsPage> {
         try {
@@ -235,7 +240,7 @@ export class DDBClient {
                 ExclusiveStartKey: startKey,
                 ScanIndexForward: false,
                 Limit: limit ?? 12
-            }).promise()
+            })
 
             let nextPageKey = undefined
             if (result.LastEvaluatedKey) {
@@ -254,7 +259,7 @@ export class DDBClient {
                 filter: { type: userid }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
     }
@@ -289,7 +294,7 @@ export class DDBClient {
                 Key: { id: assetId, timestamp: record.timestamp },
                 UpdateExpression: `SET userid = :userid`,
                 ExpressionAttributeValues: { ':userid': userId }
-            }).promise()
+            })
 
         } catch (e: any) {
             const ddbError = new DDBError(e.message, {
@@ -298,7 +303,7 @@ export class DDBClient {
                 filter: { userId, assetId }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
     }
@@ -323,9 +328,7 @@ export class DDBClient {
                 Key: { id: assetId, timestamp: record.timestamp },
                 UpdateExpression: `SET visibility = :newVisibility`,
                 ExpressionAttributeValues: { ':newVisibility': publishOn ? 'community' : 'private' }
-            }).promise()
-            console.log(result.Attributes)
-            // this.logger?.info(result)
+            })
         } catch (e: any) {
             const ddbError = new DDBError(e.message, {
                 status: e.status || e.info.status || 500,
@@ -333,7 +336,7 @@ export class DDBClient {
                 filter: { userId, assetId }
             })
             ddbError.stack = e.stack
-            this.logger?.error(ddbError?.formatForLogger())
+            this.logger?.error(ddbError?.toLogger())
             throw ddbError
         }
 

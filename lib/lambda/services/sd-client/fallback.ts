@@ -90,7 +90,7 @@ export class FalAIClient {
                     images = data.images.map((item: { url: string, width: number, height: number, content_type: string }) => {
                         return {
                             url: item.url,
-                            seed: data.seed
+                            seed: data.seed.toString()
                         }
                     })
                 }
@@ -124,7 +124,7 @@ export class FalAIClient {
             const dur = new Date().getTime() - t
             if (resError) {
                 this.metric?.putMetrics({ keys: [`FALAIError`, `FALAIError:${path}:${resError.info.status}`], value: 1, unit: MetricLoggerUnit.Count })
-                this.logger?.error(resError.formatForLogger())
+                this.logger?.error(resError.toLogger())
                 throw resError
             }
             else {

@@ -115,7 +115,7 @@ export class SDClient {
             images: data.images.map(item => {
                 return {
                     url: item.url,
-                    seed: item.seed,
+                    seed: item.seed.toString(),
                     nsfw: item.nsfw || false
                 }
             })
@@ -150,7 +150,7 @@ export class SDClient {
             if (data.images.length > 0) {
                 output = {
                     url: data.images[0].url,
-                    seed: data.images[0].seed,
+                    seed: data.images[0].seed.toString(),
                     nsfw: data.images[0].nsfw || false,
                 }
             }
@@ -205,7 +205,7 @@ export class SDClient {
             const dur = new Date().getTime() - t
             if (resError) {
                 this.metric?.putMetrics({ keys: [`LPTError`, `LPTError:${path}:${resError.info.status}`], value: 1, unit: MetricLoggerUnit.Count })
-                this.logger?.error(resError.formatForLogger())
+                this.logger?.error(resError.toLogger())
                 throw resError
             }
             else {
