@@ -25,11 +25,16 @@ export const asyncGenerateHandler = async function (event: AsyncGenerateEventInf
     })
     logger.info(event)
 
+    const ddbClient = new DDBClient({
+        tableName: process.env.DDB_GENERATIONS_TABLENAME!,
+        logger: logger
+    })
 
     const sdClient = new SDClient({
         baseURL: process.env.SDPROVIDER_ENDPOINT!,
         logger,
         metric,
+        ddbClient: ddbClient,
         fallbackClient: new FalAIClient({
             baseURL: process.env.FALAI_ENDPOINT!,
             apiKey: process.env.FALAI_APIKEY!,
@@ -37,14 +42,12 @@ export const asyncGenerateHandler = async function (event: AsyncGenerateEventInf
             metric
         })
     })
-    const ddbClient = new DDBClient({
-        tableName: process.env.DDB_GENERATIONS_TABLENAME!,
-        logger: logger
-    })
     try {
         const result = await sdClient.img2vid(event.id, event.timestamp, event.input)
         const input = event.input
         delete input.overlay_base64
+
+        const nsfw = result.images[0].nsfw
         await ddbClient.saveGeneration({
             id: event.id,
             action: GenerationType.IMG2VID,
@@ -53,7 +56,7 @@ export const asyncGenerateHandler = async function (event: AsyncGenerateEventInf
             timestamp: event.timestamp,
             duration: new Date().getTime() - event.timestamp,
             userid: input.user_id,
-            visibility: 'community'
+            visibility: nsfw ? 'private' : 'community'
         })
         await shareOnDiscord(result.images[0].url, logger)
     }
