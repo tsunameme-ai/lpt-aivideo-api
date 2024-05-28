@@ -8,17 +8,20 @@ import { FalAIClient } from './fallback'
 import { VideoExtension, VideoProcessingOperation, VideoProcessingParams } from '../ffmpeg/types'
 import { fixTruncatedImageURL } from './utils'
 import { parseBase64Image } from '../../utils/processor'
+import { DDBClient } from '../ddb-client'
 
 
 interface SDClientProps {
     baseURL: string
     fallbackClient?: FalAIClient
+    ddbClient?: DDBClient
     logger?: ILogger
     metric?: IMetric
 }
 
 export class SDClient {
     private s3Client: S3Client
+    private ddbClient?: DDBClient
     private ffmpegClient: FFMPEGClient
     private baseURL: string
     private logger?: ILogger
@@ -31,6 +34,7 @@ export class SDClient {
         this.logger = props.logger
         this.metric = props.metric
         this.fallbackClient = props.fallbackClient
+        this.ddbClient = props.ddbClient
         this.s3Client = new S3Client()
         this.ffmpegClient = new FFMPEGClient(this.logger)
     }
@@ -157,6 +161,17 @@ export class SDClient {
         }
         if (output) {
             output.url = await this.processVideo(id, params.width, output.url, params.output_type || 'gif', params.overlay_base64, params.output_width)
+
+            if (params.image_generation_id && this.ddbClient) {
+                const segs = params.image_generation_id.split(':')
+                const imgGen = await this.ddbClient.readGeneration(segs[0])
+                const imgIndex = segs.length > 1 ? parseInt(segs[1]) : 0
+                const imgNSFW = imgGen.outputs?.[imgIndex].nsfw
+                if (imgNSFW) {
+                    output.nsfw = true
+                }
+            }
+
             return {
                 id,
                 timestamp,

@@ -87,10 +87,11 @@ export class FalAIClient {
                     images = [{ url: data.video.url, seed: data.seed, nsfw: false }]
                 }
                 else if (data.images) {
-                    images = data.images.map((item: { url: string, width: number, height: number, content_type: string }) => {
+                    images = data.images.map((item: { url: string, width: number, height: number, content_type: string }, index: number) => {
                         return {
                             url: item.url,
-                            seed: data.seed.toString()
+                            seed: data.seed.toString(),
+                            nsfw: data.has_nsfw_concepts?.[index] || false
                         }
                     })
                 }
