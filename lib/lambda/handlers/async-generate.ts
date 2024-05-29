@@ -58,7 +58,9 @@ export const asyncGenerateHandler = async function (event: AsyncGenerateEventInf
             userid: input.user_id,
             visibility: nsfw ? 'private' : 'community'
         })
-        await shareOnDiscord(result.images[0].url, logger)
+        if (!nsfw) {
+            await shareOnDiscord(result.images[0].url, logger)
+        }
     }
     catch (e: any) {
         logger.error(e)
