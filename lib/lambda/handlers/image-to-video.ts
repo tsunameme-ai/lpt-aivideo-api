@@ -22,11 +22,13 @@ export const imageToVideoHandler = async function (event: APIGatewayProxyEvent, 
 
     const sdClient = new SDClient({
         baseURL: process.env.SDPROVIDER_ENDPOINT!,
+        apiKey: process.env.SDPROVIDER_APIKEY!,
         logger,
         metric,
         fallbackClient: new FalAIClient({
             baseURL: process.env.FALAI_ENDPOINT!,
             apiKey: process.env.FALAI_APIKEY!,
+            sdProviderBaseUrl: process.env.SDPROVIDER_ENDPOINT!,
             logger,
             metric
         })

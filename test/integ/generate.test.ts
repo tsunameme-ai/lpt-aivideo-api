@@ -17,7 +17,7 @@ describe('test generation', () => {
     it(`t2i`, async () => {
         const url = `${process.env.TEST_API_ENDPOINT}/text-to-image`
         const body = {
-            "model_id": "ByteDance/SDXL-Lightning",
+            "model_id": "SG161222/RealVisXL_V4.0_Lightning",
             "prompt": "A cinematic shot of a baby cat wearing an intricate italian priest robe",
             "negative_prompt": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name",
             "guidance_scale": 7,

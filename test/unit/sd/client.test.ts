@@ -3,7 +3,8 @@ import * as sinon from 'sinon'
 
 describe('SD Client', function () {
     const sdClient = new SDClient({
-        baseURL: 'https://mock.url'
+        baseURL: 'https://mock.url',
+        apiKey: 'apikey'
     })
     const stubbedSendRequest = sinon.stub(sdClient, <any>'sendRequest')
     beforeEach(() => {

@@ -6,13 +6,13 @@ import { FFMPEGClient } from '../ffmpeg'
 import { GenerationOutput, GenerationOutputItem, Img2imgInput, Img2vidInput, SDProviderError, Txt2imgInput } from './types'
 import { FalAIClient } from './fallback'
 import { VideoExtension, VideoProcessingOperation, VideoProcessingParams } from '../ffmpeg/types'
-import { fixTruncatedImageURL } from './utils'
 import { parseBase64Image } from '../../utils/processor'
 import { DDBClient } from '../ddb-client'
 
 
 interface SDClientProps {
     baseURL: string
+    apiKey: string
     fallbackClient?: FalAIClient
     ddbClient?: DDBClient
     logger?: ILogger
@@ -24,6 +24,7 @@ export class SDClient {
     private ddbClient?: DDBClient
     private ffmpegClient: FFMPEGClient
     private baseURL: string
+    private apiKey: string
     private logger?: ILogger
     private metric?: IMetric
     private fallbackClient?: FalAIClient
@@ -31,6 +32,7 @@ export class SDClient {
     private s3BucketDst = 'lpt-aivideo-dst'
     constructor(props: SDClientProps) {
         this.baseURL = props.baseURL
+        this.apiKey = props.apiKey
         this.logger = props.logger
         this.metric = props.metric
         this.fallbackClient = props.fallbackClient
@@ -87,15 +89,21 @@ export class SDClient {
         }
     }
 
-    private async downloadImageData(url: string) {
-        const res = await fetch(url)
-        if (res.ok) {
-            return res.blob()
+    private async downloadImageData(url: string): Promise<Blob> {
+        let res
+        try {
+            res = await fetch(url)
+            if (res.ok) {
+                return res.blob()
+            }
+            throw new Error('Download image error')
         }
-        throw new SDProviderError(`Image cannot be downloaded ${url}`, {
-            path: url,
-            status: res.status,
-        })
+        catch (e) {
+            throw new SDProviderError(`Download image error ${res?.status || 500} ${url}`, {
+                path: url,
+                status: res?.status || 500
+            })
+        }
     }
 
     public async img2img(id: string, timestamp: number, params: Img2imgInput): Promise<GenerationOutput> {
@@ -128,8 +136,7 @@ export class SDClient {
 
     public async img2vid(id: string, timestamp: number, params: Img2vidInput): Promise<GenerationOutput> {
         let resError = undefined
-        const imgurl = fixTruncatedImageURL(params.image_url)
-        const imageData = await this.downloadImageData(imgurl)
+        const imageData = await this.downloadImageData(params.image_url)
         const fd = new FormData()
         fd.append('image', imageData)
         fd.append('model_id', params.model_id)
@@ -186,11 +193,13 @@ export class SDClient {
         }
         throw resError
     }
-    private async sendRequest(path: string, body: any, headers?: { [key: string]: string }, timeoutMs: number = 30000): Promise<GenerationOutput> {
+    private async sendRequest(path: string, body: any, hds?: { [key: string]: string }, timeoutMs: number = 30000): Promise<{ images: Array<GenerationOutputItem> }> {
         this.metric?.putMetrics({ keys: [`LPTReq`, `LPTReq:${path}`], value: 1, unit: MetricLoggerUnit.Count })
         const t = new Date().getTime()
         let resOutput = undefined
         let resError: SDProviderError | undefined = undefined
+        const headers = hds || {}
+        headers['Authorization'] = this.apiKey
 
         try {
             const { status, data } = await axios.post(`${this.baseURL}${path}`, body, {
@@ -198,7 +207,14 @@ export class SDClient {
                 timeout: timeoutMs
             })
             if (data) {
-                resOutput = data
+                const images: GenerationOutputItem[] = data.images.map((item: GenerationOutputItem) => {
+                    if (!item.url.startsWith(`http`)) {
+                        item.url = `${this.baseURL}${item.url}`
+                    }
+                    return item
+                })
+
+                resOutput = { images }
             }
             else {
                 resError = new SDProviderError('Generation failed.', {
@@ -227,7 +243,7 @@ export class SDClient {
                 this.metric?.putMetrics({ keys: [`LPT`, `LPT:${path}`], value: 1, unit: MetricLoggerUnit.Count })
                 this.metric?.putMetrics({ keys: ['LPTDuration', `LPTDuration:${path}`], value: dur, unit: MetricLoggerUnit.Milliseconds })
             }
-            return resOutput
+            return resOutput as { images: GenerationOutputItem[] }
         }
     }
 

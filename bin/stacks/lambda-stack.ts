@@ -24,6 +24,7 @@ export interface LambdaStackProps extends cdk.StackProps {
     awsAccount: string,
     ddbGenerationsTableName: string,
     sdProviderEndpoint: string,
+    sdProviderApiKey: string,
     ffmpegLambdaLayerArn: string
     discordChannel: string
     falAiEndpoint: string
@@ -146,6 +147,7 @@ export class LambdaStack extends cdk.NestedStack {
                     handlerName: 'textToImageHandler',
                     env: {
                         SDPROVIDER_ENDPOINT: props.sdProviderEndpoint,
+                        SDPROVIDER_APIKEY: props.sdProviderApiKey,
                         DISCORD_WEBHOOK: props.discordChannel,
                         DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName,
                         FALAI_ENDPOINT: props.falAiEndpoint,
@@ -174,6 +176,7 @@ export class LambdaStack extends cdk.NestedStack {
                     env: {
                         FFMPEG_PATH: '/opt/bin/ffmpeg',
                         SDPROVIDER_ENDPOINT: props.sdProviderEndpoint,
+                        SDPROVIDER_APIKEY: props.sdProviderApiKey,
                         DISCORD_WEBHOOK: props.discordChannel,
                         DDB_GENERATIONS_TABLENAME: props.ddbGenerationsTableName,
                         FALAI_ENDPOINT: props.falAiEndpoint,

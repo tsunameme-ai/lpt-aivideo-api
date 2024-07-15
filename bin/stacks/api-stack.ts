@@ -10,6 +10,7 @@ export interface APIStackProps extends cdk.StackProps {
     awsRegion: string
     awsAccount: string
     sdProviderEndpoint: string
+    sdProviderApiKey: string
     ddbGenerationsTableName: string
     ffmpegLambdaLayerArn: string
     discordChannel: string
@@ -43,6 +44,7 @@ export class ApiStack extends cdk.Stack {
             ddbGenerationsTableName: props.ddbGenerationsTableName,
             ffmpegLambdaLayerArn: props.ffmpegLambdaLayerArn,
             sdProviderEndpoint: props.sdProviderEndpoint,
+            sdProviderApiKey: props.sdProviderApiKey,
             discordChannel: props.discordChannel,
             falAiEndpoint: props.falAiEndpoint,
             falAiApiKey: props.falAiApiKey,

@@ -7,6 +7,7 @@ import { fixTruncatedImageURL } from './utils'
 interface FalAIClientProps {
     baseURL: string
     apiKey: string
+    sdProviderBaseUrl: string
     logger?: ILogger
     metric?: IMetric
 }
@@ -14,11 +15,13 @@ interface FalAIClientProps {
 export class FalAIClient {
     private baseURL: string
     private apiKey: string
+    private sdProviderBaseUrl: string
     private logger?: ILogger
     private metric?: IMetric
     constructor(props: FalAIClientProps) {
         this.baseURL = props.baseURL
         this.apiKey = props.apiKey
+        this.sdProviderBaseUrl = props.sdProviderBaseUrl
         this.logger = props.logger
         this.metric = props.metric
     }
@@ -57,7 +60,7 @@ export class FalAIClient {
     }
 
     public async img2vid(id: string, timestamp: number, params: Img2vidInput, timeoutMS: number): Promise<GenerationOutput> {
-        const imgurl = fixTruncatedImageURL(params.image_url)
+        const imgurl = fixTruncatedImageURL(params.image_url, this.sdProviderBaseUrl)
         return await this.sendRequest(id, timestamp, '/fast-svd', {
             image_url: imgurl,
             motion_bucket_id: params.motion_bucket_id,

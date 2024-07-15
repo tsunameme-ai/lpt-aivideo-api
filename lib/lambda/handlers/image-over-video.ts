@@ -22,6 +22,7 @@ export const imageOverVideoHandler = async function (event: APIGatewayProxyEvent
 
     const sdClient = new SDClient({
         baseURL: process.env.SDPROVIDER_ENDPOINT!,
+        apiKey: process.env.SDPROVIDER_APIKEY!,
         logger: logger
     })
     const body = JSON.parse(event.body || '{}')
